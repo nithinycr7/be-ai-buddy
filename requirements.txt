@@ -3,7 +3,7 @@ uvicorn[standard]==0.30.6
 python-dotenv==1.0.1
 pydantic==2.8.2
 pydantic-settings==2.3.4
-motor==3.5.1
+motor==3.7.1
 openai==1.51.2
 azure-cognitiveservices-speech==1.40.0
 numpy==1.26.4

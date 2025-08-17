@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AI Buddy Backend"
 
     # Mongo
-    MONGODB_URI: str = ""
+    MONGODB_URI: str = "mongodb+srv://aibuddymongo:Team%40123@aibuddy.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"
     MONGODB_DB: str = "aibuddy-dev"
 
     # CORS
