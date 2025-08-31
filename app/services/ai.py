@@ -1,4 +1,6 @@
 from openai import AzureOpenAI
+
+from app.services.rag import search_cbse
 from ..core.config import settings
 from typing import List, Dict, Any
 
@@ -7,22 +9,40 @@ _client: AzureOpenAI | None = None
 def get_client() -> AzureOpenAI:
     global _client
     if _client is None:
-        _client = AzureOpenAI(
+          _client = AzureOpenAI(
             api_key=settings.AZURE_OPENAI_API_KEY,
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-            api_version="2024-08-01-preview"
+            api_version="2024-12-01-preview"
         )
     return _client
 
-async def summarize(text: str) -> str:
+async def summarize(text: str, chunks:str,class_no:int,subject:str) -> str:
     client = get_client()
+    first_500_words = ' '.join(text.split()[:500])
+    class_no = class_no
+    subject = subject
+    query = first_500_words
+    chunks = search_cbse(query, class_no, subject, k=4)
+    print(f"Found {len(chunks)} relevant chunks for summary.")
+    if not chunks:
+        return "No relevant chunks found for summary."
     resp = client.chat.completions.create(
         model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
         messages=[
-            {"role":"system","content":"You are a concise teaching assistant. Summarize the content in 5-7 bullet points."},
-            {"role":"user","content":text},
+            {
+                "role": "system",
+                "content": (
+                    "You are a concise teaching assistant for kids aged 7–14. "
+                    "Summarize the class discussion into 7–10 bullet points, "
+                    "Without losing any important information. Use both the transcript and the reference chunks to make the summary accurate and complete.Give more preference to what is taught in the transcript"
+                    "Your summary should take most of the important and concrete points from the transcript and the reference chunks which are part of the standard textbook, "
+                )
+            },
+            {
+                "role": "user",
+                "content": f"Transcript:\n{first_500_words}\n\nRelevant Chunk:\n{chunks}"
+            },
         ],
-        temperature=0.3,
     )
     return resp.choices[0].message.content.strip()
 

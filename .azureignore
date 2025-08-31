@@ -1,0 +1,44 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+
+# Environment files / secrets
+*.env
+.env.*
+secrets.json
+
+# Azure specific
+.azureignore
+.scm/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE junk
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Tests
+tests/
+.coverage
+htmlcov/
+
+# Build / dist
+dist/
+build/
+.eggs/
+*.egg-info/
+
+# Node modules (if frontend gets mixed in)
+node_modules/

@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AI Buddy Backend"
 
     # Mongo
-    MONGODB_URI: str = "mongodb+srv://aibuddymongo:Team%40123@aibuddy.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"
+    MONGODB_URI: str = ""
     MONGODB_DB: str = "aibuddy-dev"
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000","https://delightful-hill-05c05390f.1.azurestaticapps.net/"]
 
     # Security
     API_KEY_NAME: str = "x-api-key"
