@@ -35,6 +35,8 @@ class QuizService:
 
     async def get_all_quizzes(self):
      quizzes = await self.db.quizzes.find().to_list(length=None)
+
+     print("quizzes:::",quizzes)
      return [{"id": str(q["_id"]), **q} for q in quizzes]
     
   
