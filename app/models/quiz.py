@@ -3,9 +3,10 @@ from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from utils.datetime import utc_now
 from bson import ObjectId
+from app.utils.objectid import PyObjectId   # ✅ import from utils
 
 class Quiz(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     subject:str
     topic:str
     class_no: int = Field(..., ge=3, le=8)
