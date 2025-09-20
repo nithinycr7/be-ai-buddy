@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     API_KEY_VALUE: str = "dev-local-key"
     JWT_SECRET: str = "changeme"
     JWT_ALG: str = "HS256"
+    JWT_TTL: int = 30
 
     # Azure OpenAI
     AZURE_OPENAI_ENDPOINT: str = ""

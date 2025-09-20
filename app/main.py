@@ -2,8 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, quizzes, ai, admin, question,quiz,chat 
+from .routers import students, classes, quizzes, ai, admin, question,quiz,chat,user,school,auth
 from .routers.teacher import lesson_plan 
+
 
 app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
 
@@ -15,6 +16,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ RBAC middleware
+# app.middleware("http")(rbac_middleware)
+
 # Routers
 app.include_router(students.router, prefix=settings.API_PREFIX)
 app.include_router(classes.router, prefix=settings.API_PREFIX)
@@ -25,6 +29,9 @@ app.include_router(question.router, prefix=settings.API_PREFIX)
 app.include_router(quiz.router, prefix=settings.API_PREFIX)
 app.include_router(chat.router, prefix=settings.API_PREFIX)
 app.include_router(lesson_plan.router,prefix=settings.API_PREFIX)
+app.include_router(school.router,prefix=settings.API_PREFIX)
+app.include_router(user.router,prefix=settings.API_PREFIX)
+app.include_router(auth.router,prefix=settings.API_PREFIX)
 
 @app.on_event("startup")
 async def on_startup():
