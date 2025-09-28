@@ -7,11 +7,15 @@ from app.utils.datetime import utc_now
 # ---- Pydantic schema for request/response ----
 class UserBase(BaseModel):
     user_id: str = Field(..., description="School-issued unique ID (e.g. T123, S567)")
-    name: str
+    first_name: str
+    last_name: str
     email: Optional[EmailStr] = None
     school_id: Optional[str] = None
     roles: List[str] = Field(..., description='List of roles (e.g. ["teacher", "class_coordinator"])')
     is_active: bool = True
+        
+    # ⭐️ Added username as Optional ⭐️
+    username: Optional[str] = None
 
 class UserCreate(UserBase):
     password: Optional[str] = None  # now optional
