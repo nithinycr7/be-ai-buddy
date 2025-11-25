@@ -45,19 +45,6 @@ class ContentPrefs(BaseModel):
     diagram_preference: Literal["none","simple","detailed"] = "simple"
 
 
-class Student(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
-    name: str
-    student_id: str = Field(..., description="External student ID (e.g., 124537)")
-    school_tenant: Optional[str] = None
-    class_no: int = Field(..., ge=1, le=12)
-    section: str
-    persona: Optional[str] = None
-    parent_id: Optional[str] = None
-    parent_email: Optional[EmailStr] = None
-    parent_contact: Optional[str] = None
-    academic_strengths: Optional[Dict[str, float]] = Field(default=None, description="e.g., {'Math':0.8, 'Science':0.6}")
-    content_prefs: Optional[ContentPrefs] = None # NEW: default for tenant
 
 
 
@@ -124,3 +111,28 @@ class RAGDoc(BaseModel):
     section: Optional[str] = None
     text: str
     embedding: Optional[List[float]] = None
+
+class StoryPersona(BaseModel):
+    story_tone: Literal["Funny","Adventurous","Mystery","Serious","Inspirational"]
+    themes: List[Literal["Space","Animals","Sports","Superheroes","Mythology","Technology","Art","Nature","Music","History"]] = Field(default_factory=list, max_items=5)
+    difficulty: Literal["Easy","Balanced","Challenging"] = "Balanced"
+    format: Literal["Short","Long","Comic-style","Real-life Example","Dialogue"] = "Comic-style"
+    character_role: Literal["Kid Hero","Teacher Guide","Animal Character","Superhero","Scientist","Explorer"] = "Explorer"
+
+# --- OPTIONAL: request body for partial updates ---
+class UpdatePersonaRequest(BaseModel):
+    story_persona: StoryPersona
+
+class Student(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    name: str
+    student_id: str = Field(..., description="External student ID (e.g., 124537)")
+    school_tenant: Optional[str] = None
+    class_no: int = Field(..., ge=1, le=12)
+    section: str
+    parent_id: Optional[str] = None
+    parent_email: Optional[EmailStr] = None
+    parent_contact: Optional[str] = None
+    academic_strengths: Optional[Dict[str, float]] = Field(default=None, description="e.g., {'Math':0.8, 'Science':0.6}")
+    content_prefs: Optional[ContentPrefs] = None # NEW: default for tenant
+    story_persona: Optional[StoryPersona] = None # NEW: structured persona     

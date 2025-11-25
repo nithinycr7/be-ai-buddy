@@ -3,6 +3,8 @@ from ..core.security import api_key_guard
 from ..db.mongo import get_db
 from ..models.schemas import Student
 from typing import List
+from ..models.schemas import Student, UpdatePersonaRequest
+from bson import ObjectId
 
 router = APIRouter(prefix="/students", tags=["students"], dependencies=[Depends(api_key_guard)])
 
@@ -33,3 +35,22 @@ async def list_students(skip: int = 0, limit: int = 50):
     db = await get_db()
     cursor = db.students.find().skip(skip).limit(limit)
     return [Student(**d) async for d in cursor]
+
+@router.patch("/{student_id}/persona", response_model=Student)
+async def update_student_persona(student_id: str, payload: UpdatePersonaRequest):
+    """
+    Upsert 5-attribute story persona for a student.
+    """
+    db = await get_db()
+    doc = await db.students.find_one({"student_id": student_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # set the new structured persona
+    update = {"$set": {"story_persona": payload.story_persona.model_dump()}}
+    await db.students.update_one({"student_id": student_id}, update)
+    updated = await db.students.find_one({"student_id": student_id})
+    if "_id" in updated and isinstance(updated["_id"], ObjectId):
+        updated["_id"] = str(updated["_id"])
+    # return the fresh d 
+    return Student(**updated)
