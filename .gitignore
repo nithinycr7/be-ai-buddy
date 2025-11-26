@@ -1,85 +1,16 @@
-# ---- Python ----
-__pycache__/
+﻿__pycache__/
 *.py[cod]
-*$py.class
+*.class
+*.so
 .Python
-.python-version
-*.venv
-*venv
-
-# ---- Environments ----
-.venv/
 venv/
 env/
 ENV/
-.conda/
-pip-wheel-metadata/
-pip-log.txt
-pip-delete-this-directory.txt
-
-# ---- Packaging / build ----
-build/
-dist/
-downloads/
-.eggs/
-*.egg-info/
-*.egg
-sdist/
-develop-eggs/
-parts/
-var/
-
-# ---- Testing / Coverage ----
-.tox/
-.nox/
-.pytest_cache/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-htmlcov/
-
-# ---- Type-check / Lint caches ----
-.mypy_cache/
-.pyre/
-.pytype/
-.ruff_cache/
-.pyright/
-
-# ---- Logs ----
-logs/
-*.log
-uvicorn.log
-
-# ---- Editor / IDE ----
-.vscode/
-.idea/
-*.code-workspace
-
-# ---- OS files ----
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# ---- Env / Secrets ----
 .env
-.env.*
-!.env.example
-
-# ---- App temp / uploads ----
-tmp/
-temp/
-uploads/
-media/
-*.wav
-*.mp3
-
-# ---- Docker / Runtime ----
-*.pid
-docker-data/
-
-# ---- Misc ----
-*.sqlite3
-*.db
+.venv
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
