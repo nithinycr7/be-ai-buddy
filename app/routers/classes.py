@@ -4,7 +4,7 @@ from datetime import date as dt_date
 from bson import ObjectId
 import os, tempfile, urllib.request
 from app.core.config import settings
-from ..core.security import api_key_guard
+from ..core.security import api_key_guard, get_tenant
 from ..db.mongo import get_db
 from ..models.schemas import DailyClass, Transcript, Summary
 from ..services.transcribe import transcribe_wav
@@ -20,14 +20,15 @@ router = APIRouter(prefix="/classes", tags=["classes"], dependencies=[Depends(ap
 def _today_iso() -> str:
     return dt_date.today().isoformat()
 
-async def _get_or_create_daily(db, *, class_no: int, section: str, subject: str, date_str: str | None = None) -> str:
+async def _get_or_create_daily(db, *, tenant: str, class_no: int, section: str, subject: str, date_str: str | None = None) -> str:
     d = date_str or _today_iso()
     existing = await db.classes_daily.find_one({
-        "date": d, "class_no": class_no, "section": section, "subject": subject
+        "tenant": tenant, "date": d, "class_no": class_no, "section": section, "subject": subject
     })
     if existing:
         return str(existing["_id"])
     res = await db.classes_daily.insert_one({
+        "tenant": tenant,
         "date": d,
         "class_no": class_no,
         "section": section,
@@ -39,10 +40,16 @@ async def _get_or_create_daily(db, *, class_no: int, section: str, subject: str,
 
 # ---------- existing endpoints (fixed) ----------
 @router.post("/daily", response_model=DailyClass, status_code=201)
-async def create_daily(payload: DailyClass):
+async def create_daily(payload: DailyClass, tenant: str = Depends(get_tenant)):
     db = await get_db()
-    res = await db.classes_daily.insert_one(payload.model_dump(by_alias=True, exclude_none=True))
+    # Ensure tenant from header overrides or is set if missing in payload (though payload has it mandatory now)
+    # Actually, DailyClass has tenant mandatory. The client should send it in body OR we override it.
+    # Better pattern: The API client sends X-Tenant-ID. We set it on the model.
+    data = payload.model_dump(by_alias=True, exclude_none=True)
+    data['tenant'] = tenant
+    res = await db.classes_daily.insert_one(data)
     payload.id = str(res.inserted_id)
+    payload.tenant = tenant
     return payload
 
 @router.post("/daily/{daily_id}/transcribe", response_model=Transcript)
@@ -82,7 +89,7 @@ async def summarize_daily(daily_id: str):
 
 # ---------- NEW: private blob download + auto-create daily ----------
 @router.post("/transcribe-blob-or-create")
-async def transcribe_blob_or_create(payload: dict = Body(...)):
+async def transcribe_blob_or_create(payload: dict = Body(...), tenant: str = Depends(get_tenant)):
     """
     JSON:
     {
@@ -94,6 +101,7 @@ async def transcribe_blob_or_create(payload: dict = Body(...)):
     }
     """
     blob_url = payload.get("blob_url")
+    # tenant comes from dependency now
     class_no = payload.get("class_no")
     section  = payload.get("section")
     subject  = payload.get("subject")
@@ -104,7 +112,7 @@ async def transcribe_blob_or_create(payload: dict = Body(...)):
 
     db = await get_db()
     daily_id = await _get_or_create_daily(
-        db, class_no=int(class_no), section=str(section), subject=str(subject), date_str=date_str
+        db, tenant=str(tenant), class_no=int(class_no), section=str(section), subject=str(subject), date_str=date_str
     )
 
     # Parse container/blob from URL for private download
@@ -159,3 +167,18 @@ async def transcribe_blob_or_create(payload: dict = Body(...)):
         "transcript_id": str(res.inserted_id),
         "text_len": len(text or "")
     }
+
+@router.get("/daily", response_model=list[DailyClass])
+async def list_daily_classes(class_no: int, section: str, date: str | None = None, tenant: str = Depends(get_tenant)):
+    db = await get_db()
+    query = {"tenant": tenant, "class_no": class_no, "section": section}
+    if date:
+        query["date"] = date
+    
+    cursor = db.classes_daily.find(query).sort("date", -1).limit(50)
+    results = []
+    async for doc in cursor:
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
+        results.append(DailyClass(**doc))
+    return results

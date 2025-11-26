@@ -50,6 +50,7 @@ class ContentPrefs(BaseModel):
 
 class DailyClass(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
+    tenant: str = Field(default="demo-school", description="School/Tenant ID")
     date: date
     class_no: int
     section: str
@@ -136,3 +137,76 @@ class Student(BaseModel):
     academic_strengths: Optional[Dict[str, float]] = Field(default=None, description="e.g., {'Math':0.8, 'Science':0.6}")
     content_prefs: Optional[ContentPrefs] = None # NEW: default for tenant
     story_persona: Optional[StoryPersona] = None # NEW: structured persona     
+
+# Progress Tracking Models
+class StudentProgress(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    student_id: str
+    daily_id: str
+    tenant: str
+    date: date
+    class_no: int
+    section: str
+    subject: str
+    
+    # Activity tracking
+    summary_viewed: bool = False
+    summary_viewed_at: Optional[str] = None
+    
+    story_generated: bool = False
+    story_id: Optional[str] = None
+    story_generated_at: Optional[str] = None
+    
+    # Quiz performance
+    quiz_taken: bool = False
+    quiz_id: Optional[str] = None
+    quiz_attempts: int = 0
+    quiz_best_score: Optional[float] = None
+    quiz_latest_score: Optional[float] = None
+    quiz_first_attempt_at: Optional[str] = None
+    quiz_last_attempt_at: Optional[str] = None
+    
+    # Auto-calculated
+    completion_percentage: float = 0.0
+    is_completed: bool = False
+    completed_at: Optional[str] = None
+    
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class QuizQuestion(BaseModel):
+    qid: str
+    question: str
+    options: List[QuizOption]
+    correct: List[str] = Field(default_factory=list)
+
+class Quiz(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    daily_id: str
+    subject: str
+    topic: str
+    class_no: int
+    section: str
+    tenant: str
+    questions: List[QuizQuestion]
+    created_at: Optional[str] = None
+
+class QuizResponse(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    daily_id: str
+    student_id: str
+    quiz_id: str
+    tenant: str
+    
+    attempt_number: int
+    attempted_at: str
+    
+    responses: Dict[str, List[str]]  # {qid: [selected_option]}
+    correct_answers: Dict[str, List[str]]  # {qid: [correct_option]}
+    
+    score: float  # Percentage
+    correct_count: int
+    total_questions: int
+    
+    time_taken_seconds: Optional[int] = None
+

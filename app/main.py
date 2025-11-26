@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, quizzes, ai, admin, question,quiz,chat 
+from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress
 
 
 app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
@@ -25,6 +25,7 @@ app.include_router(admin.router, prefix=settings.API_PREFIX)
 app.include_router(question.router, prefix=settings.API_PREFIX)
 app.include_router(quiz.router, prefix=settings.API_PREFIX)
 app.include_router(chat.router, prefix=settings.API_PREFIX)
+app.include_router(progress.router, prefix=settings.API_PREFIX)
 
 @app.on_event("startup")
 async def on_startup():

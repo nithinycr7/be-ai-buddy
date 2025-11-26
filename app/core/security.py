@@ -9,3 +9,10 @@ async def api_key_guard(x_api_key: str | None = Header(default=None)):
             detail="Invalid or missing API key"
         )
     return True
+
+async def get_tenant(x_tenant_id: str = Header(default="demo-school", alias="X-Tenant-ID")) -> str:
+    """
+    Extracts the tenant ID from the X-Tenant-ID header.
+    Defaults to 'demo-school' for development convenience.
+    """
+    return x_tenant_id

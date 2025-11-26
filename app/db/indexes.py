@@ -13,7 +13,7 @@ async def ensure(db: AsyncIOMotorDatabase):
     await db.parents.create_index("student_id", name="ix_parent_student")
 
     # Schools
-    await db.schools.create_index([("tenant", 1), ("branch", 1)], unique=True, name="ux_school_tenant_branch")
+   # await db.schools.create_index([("tenant", 1), ("branch", 1)], unique=True, name="ux_school_tenant_branch")
 
     # Daily Classes
     await db.classes_daily.create_index([("date", -1), ("class_no", 1), ("section", 1), ("subject", 1)], name="ix_daily_composite")
