@@ -46,7 +46,7 @@ async def summarize(text: str, chunks:str,class_no:int,subject:str) -> str:
     )
     return resp.choices[0].message.content.strip()
 
-async def generate_story(topic: str, persona: str | None) -> str:
+async def generate_story(topic: str, persona: str | None) -> tuple[str, int]:
     client = get_client()
     prompt = f"Create a short motivational story (<=200 words) that teaches the concept: {topic}. "
     if persona:
@@ -59,7 +59,9 @@ async def generate_story(topic: str, persona: str | None) -> str:
         ],
         temperature=0.7,
     )
-    return resp.choices[0].message.content.strip()
+    text = resp.choices[0].message.content.strip()
+    usage = resp.usage.total_tokens if resp.usage else 0
+    return text, usage
 
 async def generate_quiz(summary: str, n_questions: int = 5) -> List[Dict[str, Any]]:
     client = get_client()
