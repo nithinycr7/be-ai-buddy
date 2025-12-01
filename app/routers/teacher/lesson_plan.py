@@ -1,0 +1,79 @@
+# routes/lesson_plan.py
+from fastapi import APIRouter, Depends, HTTPException
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from datetime import datetime, timezone
+from typing import List, Optional, Dict, Any
+from ...db.mongo import get_db
+from app.services.teacher.lesson_plan import LessonPlanService
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/lesson-plans", tags=["Lesson Plans"])
+
+class GenerateRequest(BaseModel):
+    class_no: int
+    subject: str
+    chapter: str
+    teacher_id: str
+
+class EditRequest(BaseModel):
+    draft_id: str
+    sections: List[str]
+    instruction: str
+
+class SaveRequest(BaseModel):
+    draft_id: str
+
+class UpdateLastAccessedRequest(BaseModel):
+    plan_id: str
+    plan_type: str  # "draft" or "saved"
+
+@router.post("/generate")
+async def generate_plan(req: GenerateRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
+    service = LessonPlanService(db)
+    return await service.generate_plan(
+        class_no=req.class_no,
+        subject=req.subject,
+        chapter=req.chapter,
+        teacher_id=req.teacher_id
+    )
+
+@router.post("/edit")
+async def edit_plan(req: EditRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
+    service = LessonPlanService(db)
+    return await service.edit_plan(
+        draft_id=req.draft_id,
+        sections=req.sections,
+        instruction=req.instruction
+    )
+
+@router.post("/save")
+async def save_plan(req: SaveRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
+    service = LessonPlanService(db)
+    return await service.save_plan(draft_id=req.draft_id)
+
+@router.get("/draft/{draft_id}")
+async def get_draft(draft_id: str, db: AsyncIOMotorDatabase = Depends(get_db)):
+    service = LessonPlanService(db)
+    draft = await service.get_draft(draft_id)
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return draft
+
+@router.get("/")
+async def get_saved_plans(teacher_id: str, db: AsyncIOMotorDatabase = Depends(get_db)):
+    service = LessonPlanService(db)
+    return {
+        "success": True,
+        "plans": await service.get_saved_plans(teacher_id)
+    }
+
+@router.get("/recent")
+async def get_recent_plans(teacher_id: str, db: AsyncIOMotorDatabase = Depends(get_db)):
+    service = LessonPlanService(db)
+    return await service.get_recent_plans(teacher_id)
+
+@router.patch("/last-accessed")
+async def update_last_accessed(req: UpdateLastAccessedRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
+    service = LessonPlanService(db)
+    await service.update_last_accessed(req.plan_id, req.plan_type)
+    return {"success": True}
