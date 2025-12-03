@@ -103,6 +103,8 @@ class Story(BaseModel):
     student_id: Optional[str] = None
     persona_used: Optional[str] = None
     text: str
+    tokens_used: Optional[int] = None
+    generation_count: Optional[int] = None
 
 class RAGDoc(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")

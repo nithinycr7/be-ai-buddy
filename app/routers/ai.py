@@ -86,25 +86,59 @@ async def story_for_student(daily_id: str, student_id: str):
     s = await db.students.find_one({"student_id": student_id})
     school = await db.schools.find_one({"tenant": s.get("school_tenant")}) if s and s.get("school_tenant") else None
 
+    # Get current persona
+    persona_data = s.get("story_persona") if s else None
+    
+    # Check for existing story
+    existing_story = await db.stories.find_one({
+        "daily_id": daily_id,
+        "student_id": student_id
+    }, sort=[("created_at", -1)]) # Get latest if multiple exist
+
+    if existing_story:
+        # Compare personas (handle None vs missing key differences if any)
+        # We assume persona_used is stored exactly as it was in student profile
+        prev_persona = existing_story.get("persona_used")
+        
+        # If personas match, return existing story without regenerating
+        if prev_persona == persona_data:
+            # Ensure ID is string
+            if "_id" in existing_story:
+                existing_story["id"] = str(existing_story["_id"])
+            # Ensure persona_used is string for response model if it's a dict
+            if isinstance(existing_story.get("persona_used"), dict):
+                existing_story["persona_used"] = str(existing_story["persona_used"])
+            return Story(**existing_story)
+
+    # If no story or persona changed, generate new one
     topic = ", ".join(d.get("topics", [])) if d else "today's topic"
     prefs = _merge_prefs(school, s)
     
-    # Use story_persona if available, otherwise fallback to persona or None
-    persona_data = s.get("story_persona") if s else None
+    text, tokens_used = await generate_story(topic, persona_data, prefs=prefs)
     
-    text = await generate_story(topic, persona_data, prefs=prefs)
+    from datetime import datetime
+    now = datetime.utcnow().isoformat() + "Z"
+
+    # Calculate generation count for this persona
+    count = await db.stories.count_documents({
+        "daily_id": daily_id,
+        "student_id": student_id,
+        "persona_used": persona_data
+    })
+    generation_count = count + 1
+
     res = await db.stories.insert_one({
         "daily_id": daily_id, "student_id": student_id,
         "persona_used": persona_data, # Store the structured persona
-        "text": text
+        "text": text,
+        "tokens_used": tokens_used,
+        "generation_count": generation_count,
+        "created_at": now
     })
     
     story_id = str(res.inserted_id)
     
     # Auto-track story generation in progress
-    from datetime import datetime
-    now = datetime.utcnow().isoformat() + "Z"
-    
     progress = await db.student_progress.find_one({
         "student_id": student_id,
         "daily_id": daily_id
@@ -161,4 +195,12 @@ async def story_for_student(daily_id: str, student_id: str):
     # Convert persona_data to string for response model if needed
     persona_str = str(persona_data) if persona_data else None
     
-    return Story(id=story_id, daily_id=daily_id, student_id=student_id, persona_used=persona_str, text=text)
+    return Story(
+        id=story_id, 
+        daily_id=daily_id, 
+        student_id=student_id, 
+        persona_used=persona_str, 
+        text=text,
+        tokens_used=tokens_used,
+        generation_count=generation_count
+    )
