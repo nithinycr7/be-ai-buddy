@@ -8,6 +8,7 @@ from app.services.teacher.lesson_plan import LessonPlanService
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/lesson-plans", tags=["Lesson Plans"])
+# Force reload
 
 class GenerateRequest(BaseModel):
     class_no: int
@@ -51,13 +52,18 @@ async def save_plan(req: SaveRequest, db: AsyncIOMotorDatabase = Depends(get_db)
     service = LessonPlanService(db)
     return await service.save_plan(draft_id=req.draft_id)
 
-@router.get("/draft/{draft_id}")
-async def get_draft(draft_id: str, db: AsyncIOMotorDatabase = Depends(get_db)):
+@router.get("/draft/{plan_id}")
+async def get_plan(plan_id: str, db: AsyncIOMotorDatabase = Depends(get_db)):
     service = LessonPlanService(db)
-    draft = await service.get_draft(draft_id)
-    if not draft:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    return draft
+    # Try draft first
+    plan = await service.get_draft(plan_id)
+    if not plan:
+        # Try saved
+        plan = await service.get_saved_plan(plan_id)
+    
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return plan
 
 @router.get("/")
 async def get_saved_plans(teacher_id: str, db: AsyncIOMotorDatabase = Depends(get_db)):

@@ -13,10 +13,81 @@ async def rag_answer(query: str, class_no: int, subject: str):
     answer = await answer_with_rag(query, class_no, subject)
     return {"answer": answer}
 
+# async def generate_story(topic: str, persona: str | dict | None, prefs: "ContentPrefs | None" = None) -> str:
+#     client = get_client()
+
+#     # Build a compact style string from prefs
+#     style_parts = []
+#     if prefs:
+#         style_parts.append(f"Story format: {prefs.story_format}")
+#         style_parts.append(f"Length: {prefs.story_length}")
+#         style_parts.append(f"Tone: {prefs.tone}, Humor: {prefs.humor_level}")
+#         style_parts.append(f"Examples: {', '.join(prefs.examples_type) or 'none'}")
+#         if prefs.reference_figures:
+#             style_parts.append(f"Reference figures: {', '.join(prefs.reference_figures)}")
+#         style_parts.append(f"Language: {prefs.language}")
+#         style_parts.append(f"Steps: {'yes' if prefs.include_steps else 'no'}")
+#         style_parts.append(f"Summary: {prefs.include_summary}")
+#         style_parts.append(f"Diagrams: {prefs.diagram_preference}")
+#         style_parts.append(f"Explain as: {prefs.explanation_granularity} in {prefs.explanation_format}")
+#     style = " | ".join(style_parts)
+
+#     # prompt = f"Create a short motivational story (<=200 words) that teaches the concept: {topic}. "
+
+#     prompt = (
+#     f"Create an interactive comic-style story (<=200 words) that teaches: {topic}.\n"
+#     f"Format Requirements:\n"
+#     f"- Use comic panels (Panel 1, Panel 2...)\n"
+#     f"- Add emojis and sound effects (e.g., ⚡💥🏏 Whoosh!)\n"
+#     f"- Add 1 mascot sidekick\n"
+#     f"- Insert 1 student question every 2–3 panels (multiple choice)\n"
+#     f"- Keep language level adjustable based on prefs: {prefs.language if prefs else 'English'}\n"
+#     f"- Age range: suitable for 7–14\n"
+#     f"- End with a one-sentence summary.\n"
+# )
+
+    
+#     if persona:
+#         if isinstance(persona, dict):
+#             # Format structured persona
+#             style_desc = (
+#                 f"Role: {persona.get('character_role', 'Explorer')}, "
+#                 f"Tone: {persona.get('story_tone', 'Adventurous')}, "
+#                 f"Themes: {', '.join(persona.get('themes', []))}, "
+#                 f"Difficulty: {persona.get('difficulty', 'Balanced')}, "
+#                 f"Format: {persona.get('format', 'Comic-style')}"
+#             )
+#             prompt += f"Style for a child who likes: {style_desc}. "
+#         else:
+#             # Legacy string persona
+#             prompt += f"Style for a child who likes: {persona}. "
+
+#     # prompt += (
+#     #     f"Prefer the child's interests if given. Keep it safe for ages 8–12.\n\n"
+#     #     f"Presentation prefs: {style or 'default'}"
+#     # )
+
+#     prompt += (
+#     f"\nPrefer the child's interests if given. Keep it safe for ages 8–12.\n"
+#     f"Presentation prefs: {style or 'default'}"
+#     f"\nFollow the format rules strictly."
+# )
+
+#     resp = client.chat.completions.create(
+#         model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+#         messages=[
+#             {"role":"system","content":"You create kid-friendly educational stories. Respect the given presentation preferences strictly."},
+#             {"role":"user","content":prompt},
+#         ],
+#         temperature=0.6,
+#     )
+#     return resp.choices[0].message.content.strip()
+
+
 async def generate_story(topic: str, persona: str | dict | None, prefs: "ContentPrefs | None" = None) -> str:
     client = get_client()
 
-    # Build a compact style string from prefs
+    # --- Build compact style summary from prefs ---
     style_parts = []
     if prefs:
         style_parts.append(f"Story format: {prefs.story_format}")
@@ -32,37 +103,78 @@ async def generate_story(topic: str, persona: str | dict | None, prefs: "Content
         style_parts.append(f"Explain as: {prefs.explanation_granularity} in {prefs.explanation_format}")
     style = " | ".join(style_parts)
 
-    prompt = f"Create a short motivational story (<=200 words) that teaches the concept: {topic}. "
-    
+    # --- Auto Emoji Level Decision Based on Grade ---
+    # Default: medium
+    emoji_level = "medium"
+    grade = getattr(prefs, "grade", None) if prefs else None
+
+    if grade:
+        if grade <= 5:
+            emoji_level = "heavy"
+        elif grade in (6, 7):
+            emoji_level = "medium"
+        else:  # Grade 8–9
+            emoji_level = "light"
+
+    # --- Story Prompt ---
+    prompt = f"""
+Create an interactive comic-style story (<=200 words) that teaches the concept: "{topic}".
+
+Audience:
+- Student age range: 7–14
+- Current grade: {grade if grade else "unknown"}
+- Language: {prefs.language if prefs else "English"}
+- Tone: fun, friendly, and curiosity-building
+
+Story Format Rules:
+1. Use comic panels labeled as: Panel 1, Panel 2, Panel 3...
+2. Include ONE mascot sidekick character.
+3. Add ONE short multiple-choice question after every 2–3 panels.
+4. Keep sentences clear and age-appropriate.
+5. End with a one-sentence summary highlighting the key learning outcome.
+
+Emoji and Visual Rules (SIMULATED VISUAL STORY MODE):
+- You may use emojis because real images or animations are not available.
+- Emoji usage level: {emoji_level}
+    * heavy → bright, expressive, frequent emojis (like a comic)
+    * medium → emojis for actions + characters (approx. 2–3 per panel)
+    * light → only meaningful emojis (emotion, action, or object focus)
+
+Additional Constraints:
+- Use relatable examples (sports, daily life).
+- Include sound effects only when meaningful (e.g., Whoosh!, Tap!, Boom!).
+- Do NOT use markdown formatting (**, #, ---).
+- Follow all rules strictly.
+"""
+
+    # --- Persona Logic ---
     if persona:
         if isinstance(persona, dict):
-            # Format structured persona
-            style_desc = (
+            persona_desc = (
                 f"Role: {persona.get('character_role', 'Explorer')}, "
                 f"Tone: {persona.get('story_tone', 'Adventurous')}, "
                 f"Themes: {', '.join(persona.get('themes', []))}, "
                 f"Difficulty: {persona.get('difficulty', 'Balanced')}, "
-                f"Format: {persona.get('format', 'Comic-style')}"
+                f"Format Preference: {persona.get('format', 'Comic-style')}"
             )
-            prompt += f"Style for a child who likes: {style_desc}. "
+            prompt += f"\nUse style preferences based on persona: {persona_desc}."
         else:
-            # Legacy string persona
-            prompt += f"Style for a child who likes: {persona}. "
+            prompt += f"\nUse style preferences based on persona: {persona}."
 
-    prompt += (
-        f"Prefer the child's interests if given. Keep it safe for ages 8–12.\n\n"
-        f"Presentation prefs: {style or 'default'}"
-    )
+    prompt += f"\nPresentation preference summary: {style or 'default'}."
 
+    # --- GPT Call ---
     resp = client.chat.completions.create(
         model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
         messages=[
-            {"role":"system","content":"You create kid-friendly educational stories. Respect the given presentation preferences strictly."},
-            {"role":"user","content":prompt},
+            {"role": "system", "content": "You create kid-friendly educational comic-style stories that follow the exact requested formatting."},
+            {"role": "user", "content": prompt}
         ],
         temperature=0.6,
     )
+
     return resp.choices[0].message.content.strip()
+
 
 def _merge_prefs(school_doc, student_doc) -> ContentPrefs | None:
     school_p = school_doc.get("content_prefs") if school_doc else None
