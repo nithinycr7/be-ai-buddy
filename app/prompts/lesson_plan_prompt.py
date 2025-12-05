@@ -2,9 +2,9 @@ import json
 
 def lesson_plan_prompt(class_no, subject, chapter):
     return f"""
-You are an expert NCERT teacher with strong lesson design experience.
+You are an expert IB teacher with strong lesson design experience. Your lecture plan should be able to highlight the key concepts and ideas of the chapter.Be very elaborate and exhaustive.
 
-Create a clear and classroom-ready lesson plan for:
+Create a clear,elaborate and classroom-ready lesson plan which is exhaustive and ready to be used in a classroom for:
 
 Class: {class_no}
 Subject: {subject}
@@ -33,15 +33,16 @@ Follow the schema STRICTLY:
 
 CONTENT QUALITY RULES:
 - Learning outcomes MUST follow Bloom’s verbs (e.g., identify, explain, apply, analyze).
-- Core instruction MUST be 4–6 sentences OR 60–120 words. It should include examples relevant to real life or student experience.
+- Core instruction MUST be 4–6 sentences OR 120–240 words. It should include examples relevant to real life or student experience.
 - Practice activity MUST be actionable and written as step-by-step instructions (minimum 3 steps).
 - Assessment MUST include one question students can respond to verbally or in writing.
-- Time values must feel realistic for a 30–50 minute lesson.
+- Time values must feel realistic for a 40–50 minute lesson.
 
 STRICT OUTPUT RULES:
 - DO NOT add extra fields.
 - DO NOT return markdown, bullets, or commentary outside the JSON.
 - MUST produce machine-parseable JSON only.
+-
 """
 
 
