@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from ..core.security import api_key_guard
 from ..db.mongo import get_db
@@ -84,7 +85,7 @@ async def rag_answer(query: str, class_no: int, subject: str):
 #     return resp.choices[0].message.content.strip()
 
 
-async def generate_story(topic: str, persona: str | dict | None, prefs: "ContentPrefs | None" = None) -> str:
+async def generate_story(topic: str, persona: str | dict | None, prefs: "ContentPrefs | None" = None) -> tuple[str, int]:
     client = get_client()
 
     # --- Build compact style summary from prefs ---
@@ -173,7 +174,9 @@ Additional Constraints:
         temperature=0.6,
     )
 
-    return resp.choices[0].message.content.strip()
+    content = resp.choices[0].message.content.strip()
+    usage = resp.usage.total_tokens if resp.usage else 0
+    return content, usage
 
 
 def _merge_prefs(school_doc, student_doc) -> ContentPrefs | None:
@@ -188,131 +191,160 @@ from bson import ObjectId
 
 @router.post("/story", response_model=Story)
 async def story_for_student(daily_id: str, student_id: str):
-    db = await get_db()
-    if not ObjectId.is_valid(daily_id):
-         raise HTTPException(status_code=400, detail="Invalid daily_id format")
+    logger = logging.getLogger(__name__)
+    logger.info(f"[STORY] Starting story generation for daily_id={daily_id}, student_id={student_id}")
     
-    d = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
-    if not d:
-        raise HTTPException(status_code=404, detail="Daily class not found")
-    s = await db.students.find_one({"student_id": student_id})
-    school = await db.schools.find_one({"tenant": s.get("school_tenant")}) if s and s.get("school_tenant") else None
-
-    # Get current persona
-    persona_data = s.get("story_persona") if s else None
-    
-    # Check for existing story
-    existing_story = await db.stories.find_one({
-        "daily_id": daily_id,
-        "student_id": student_id
-    }, sort=[("created_at", -1)]) # Get latest if multiple exist
-
-    if existing_story:
-        # Compare personas (handle None vs missing key differences if any)
-        # We assume persona_used is stored exactly as it was in student profile
-        prev_persona = existing_story.get("persona_used")
+    try:
+        db = await get_db()
+        logger.info("[STORY] Database connection established")
         
-        # If personas match, return existing story without regenerating
-        if prev_persona == persona_data:
-            # Ensure ID is string
-            if "_id" in existing_story:
-                existing_story["id"] = str(existing_story["_id"])
-            # Ensure persona_used is string for response model if it's a dict
-            if isinstance(existing_story.get("persona_used"), dict):
-                existing_story["persona_used"] = str(existing_story["persona_used"])
-            return Story(**existing_story)
+        if not ObjectId.is_valid(daily_id):
+            logger.error(f"[STORY] Invalid daily_id format: {daily_id}")
+            raise HTTPException(status_code=400, detail="Invalid daily_id format")
+        
+        d = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+        logger.info(f"[STORY] Daily class lookup result: {d is not None}")
+        if not d:
+            logger.error(f"[STORY] Daily class not found for daily_id={daily_id}")
+            raise HTTPException(status_code=404, detail="Daily class not found")
+        
+        s = await db.students.find_one({"student_id": student_id})
+        logger.info(f"[STORY] Student lookup result: {s is not None}")
+        
+        school = await db.schools.find_one({"tenant": s.get("school_tenant")}) if s and s.get("school_tenant") else None
+        logger.info(f"[STORY] School lookup result: {school is not None}")
 
-    # If no story or persona changed, generate new one
-    topic = ", ".join(d.get("topics", [])) if d else "today's topic"
-    prefs = _merge_prefs(school, s)
-    
-    text, tokens_used = await generate_story(topic, persona_data, prefs=prefs)
-    
-    from datetime import datetime
-    now = datetime.utcnow().isoformat() + "Z"
-
-    # Calculate generation count for this persona
-    count = await db.stories.count_documents({
-        "daily_id": daily_id,
-        "student_id": student_id,
-        "persona_used": persona_data
-    })
-    generation_count = count + 1
-
-    res = await db.stories.insert_one({
-        "daily_id": daily_id, "student_id": student_id,
-        "persona_used": persona_data, # Store the structured persona
-        "text": text,
-        "tokens_used": tokens_used,
-        "generation_count": generation_count,
-        "created_at": now
-    })
-    
-    story_id = str(res.inserted_id)
-    
-    # Auto-track story generation in progress
-    progress = await db.student_progress.find_one({
-        "student_id": student_id,
-        "daily_id": daily_id
-    })
-    
-    if not progress:
-        # Create new progress document
-        progress = {
-            "student_id": student_id,
+        # Get current persona
+        persona_data = s.get("story_persona") if s else None
+        logger.info(f"[STORY] Persona data: {persona_data}")
+        
+        # Check for existing story
+        existing_story = await db.stories.find_one({
             "daily_id": daily_id,
-            "tenant": d.get("tenant", "demo-school"),
-            "date": d["date"],
-            "class_no": d["class_no"],
-            "section": d["section"],
-            "subject": d["subject"],
-            "summary_viewed": False,
-            "story_generated": False,
-            "quiz_taken": False,
-            "quiz_attempts": 0,
-            "completion_percentage": 0.0,
-            "is_completed": False,
-            "created_at": now,
-            "updated_at": now
-        }
+            "student_id": student_id
+        }, sort=[("created_at", -1)])
+        logger.info(f"[STORY] Existing story found: {existing_story is not None}")
+
+        if existing_story:
+            prev_persona = existing_story.get("persona_used")
+            if prev_persona == persona_data:
+                logger.info("[STORY] Returning cached story (persona unchanged)")
+                # Convert ObjectId to string and remove _id
+                if "_id" in existing_story:
+                    existing_story["id"] = str(existing_story.pop("_id"))
+                # Ensure persona_used is string for response model if it's a dict
+                if isinstance(existing_story.get("persona_used"), dict):
+                    existing_story["persona_used"] = str(existing_story["persona_used"])
+                return Story(**existing_story)
+
+        # Generate new story
+        topic = ", ".join(d.get("topics", [])) if d else "today's topic"
+        logger.info(f"[STORY] Generating story for topic: {topic}")
+        
+        prefs = _merge_prefs(school, s)
+        logger.info(f"[STORY] Merged prefs: {prefs}")
+        
+        logger.info("[STORY] Calling generate_story...")
+        text, tokens_used = await generate_story(topic, persona_data, prefs=prefs)
+        logger.info(f"[STORY] Story generated successfully, tokens_used={tokens_used}")
+        
+        from datetime import datetime
+        now = datetime.utcnow().isoformat() + "Z"
+
+        # Calculate generation count for this persona
+        count = await db.stories.count_documents({
+            "daily_id": daily_id,
+            "student_id": student_id,
+            "persona_used": persona_data
+        })
+        generation_count = count + 1
+        logger.info(f"[STORY] Generation count: {generation_count}")
+
+        res = await db.stories.insert_one({
+            "daily_id": daily_id, "student_id": student_id,
+            "persona_used": persona_data,
+            "text": text,
+            "tokens_used": tokens_used,
+            "generation_count": generation_count,
+            "created_at": now
+        })
+        logger.info("[STORY] Story inserted into database")
+        
+        story_id = str(res.inserted_id)
     
-    # Update story fields
-    progress["story_generated"] = True
-    progress["story_id"] = story_id
-    progress["story_generated_at"] = now
-    progress["updated_at"] = now
+        # Auto-track story generation in progress
+        progress = await db.student_progress.find_one({
+            "student_id": student_id,
+            "daily_id": daily_id
+        })
+        
+        if not progress:
+            # Create new progress document
+            progress = {
+                "student_id": student_id,
+                "daily_id": daily_id,
+                "tenant": d.get("tenant", "demo-school"),
+                "date": d["date"],
+                "class_no": d["class_no"],
+                "section": d["section"],
+                "subject": d["subject"],
+                "summary_viewed": False,
+                "story_generated": False,
+                "quiz_taken": False,
+                "quiz_attempts": 0,
+                "completion_percentage": 0.0,
+                "is_completed": False,
+                "created_at": now,
+                "updated_at": now
+            }
+        
+        # Update story fields
+        progress["story_generated"] = True
+        progress["story_id"] = story_id
+        progress["story_generated_at"] = now
+        progress["updated_at"] = now
+        
+        # Recalculate completion
+        completion = 0.0
+        if progress.get("summary_viewed"):
+            completion += 25.0
+        if progress.get("story_generated"):
+            completion += 25.0
+        if progress.get("quiz_best_score") is not None:
+            completion += (progress["quiz_best_score"] / 100.0) * 50.0
+        
+        progress["completion_percentage"] = completion
+        progress["is_completed"] = completion >= 75.0
+        
+        if progress["is_completed"] and not progress.get("completed_at"):
+            progress["completed_at"] = now
+        
+        # Upsert progress
+        await db.student_progress.update_one(
+            {"student_id": student_id, "daily_id": daily_id},
+            {"$set": progress},
+            upsert=True
+        )
+        logger.info("[STORY] Progress updated")
+        
+        # Convert persona_data to string for response model if needed
+        persona_str = str(persona_data) if persona_data else None
+        
+        logger.info(f"[STORY] Returning story with id={story_id}")
+        return Story(
+            id=story_id, 
+            daily_id=daily_id, 
+            student_id=student_id, 
+            persona_used=persona_str, 
+            text=text,
+            tokens_used=tokens_used,
+            generation_count=generation_count
+        )
     
-    # Recalculate completion
-    completion = 0.0
-    if progress.get("summary_viewed"):
-        completion += 25.0
-    if progress.get("story_generated"):
-        completion += 25.0
-    if progress.get("quiz_best_score") is not None:
-        completion += (progress["quiz_best_score"] / 100.0) * 50.0
-    
-    progress["completion_percentage"] = completion
-    progress["is_completed"] = completion >= 75.0
-    
-    if progress["is_completed"] and not progress.get("completed_at"):
-        progress["completed_at"] = now
-    
-    # Upsert progress
-    await db.student_progress.update_one(
-        {"student_id": student_id, "daily_id": daily_id},
-        {"$set": progress},
-        upsert=True
-    )
-    
-    # Convert persona_data to string for response model if needed
-    persona_str = str(persona_data) if persona_data else None
-    
-    return Story(
-        id=story_id, 
-        daily_id=daily_id, 
-        student_id=student_id, 
-        persona_used=persona_str, 
-        text=text,
-        tokens_used=tokens_used,
-        generation_count=generation_count
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"[STORY] Unhandled error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Story generation failed: {str(e)}")
+
+

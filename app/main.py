@@ -1,9 +1,17 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
 from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress
 from .routers.teacher import lesson_plan
+
+# Configure logging to show in console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 
 
 app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
