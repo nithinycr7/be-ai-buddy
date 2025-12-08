@@ -14,3 +14,4 @@ ENV/
 .vscode/
 *.swp
 *.swo
+*.md
