@@ -257,8 +257,8 @@ class QuizAnalytics(BaseModel):
 class QuizQuestionPublic(BaseModel):
     qid: str
     question: str
-    question_type: str
-    difficulty: str
+    question_type: str = "MCQ"
+    difficulty: str = "medium"
     options: List[QuizOption] = Field(default_factory=list)
     # Excludes correct, hint, explanation
 

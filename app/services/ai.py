@@ -329,7 +329,14 @@ Return JSON:
         
         import json
         data = json.loads(resp.choices[0].message.content)
-        return data.get("questions", [])[:6]
+        raw_questions = data.get("questions", [])
+        
+        # Validate and normalize
+        validated_questions = []
+        for i, q in enumerate(raw_questions[:6]):
+            validated_questions.append(validate_and_normalize_question(q, i + 1))
+            
+        return validated_questions
         
     except Exception as e:
         print(f"Error generating revision quiz: {e}")
