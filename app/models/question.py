@@ -12,6 +12,9 @@ class QuestionType(str,Enum):
     FILL_BLANK = "FILL_BLANK"
     MATCH = "MATCH"
     SHORT_ANSWER = "SHORT_ANSWER"
+    SOLVE = "SOLVE"  # Numerical or text answer (for problem-solving)
+    HOTS = "HOTS"  # Higher-Order Thinking Skills
+    STORY_BASED = "STORY_BASED"  # Fun/engaging story-based question
 
 class QuizOption(BaseModel):
     id: str

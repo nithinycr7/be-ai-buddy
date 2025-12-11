@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr, field_validator
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import date
 
 from typing import Literal
@@ -61,21 +61,6 @@ class DailyClass(BaseModel):
 class QuizOption(BaseModel):
     key: str
     description: str
-
-class QuizQuestion(BaseModel):
-    qid: str
-    question: str
-    options: List[QuizOption]
-    correct: List[str] = Field(default_factory=list)
-
-class Quiz(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
-    daily_id: str
-    class_no: int
-    section: str
-    subject: str
-    topic_tags: List[str] = []
-    questions: List[QuizQuestion]
 
 class QuizResponse(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
@@ -179,8 +164,12 @@ class StudentProgress(BaseModel):
 class QuizQuestion(BaseModel):
     qid: str
     question: str
-    options: List[QuizOption]
-    correct: List[str] = Field(default_factory=list)
+    question_type: str = "MCQ"  # MCQ, FILL_BLANK, SOLVE, HOTS, STORY_BASED
+    difficulty: str = "medium"  # easy, medium, hard
+    options: List[QuizOption] = Field(default_factory=list)
+    correct: Union[str, List[str]] = Field(default_factory=list)  # String for FILL_BLANK/SOLVE, List for MCQ
+    hint: Optional[str] = None
+    explanation: Optional[str] = None
 
 class Quiz(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
@@ -191,7 +180,19 @@ class Quiz(BaseModel):
     section: str
     tenant: str
     questions: List[QuizQuestion]
+    auto_generated: bool = True
+    transcript_id: Optional[str] = None
+    generation_confidence: float = 0.0
+    teacher_edited: bool = False
+    teacher_approved: bool = False
+    published: bool = True
+    keywords: List[str] = Field(default_factory=list)
+    difficulty_level: str = "medium"
     created_at: Optional[str] = None
+    previous_attempt: Optional[Dict[str, Any]] = None
+
+    class Config:
+        populate_by_name = True
 
 class QuizResponse(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
@@ -211,4 +212,90 @@ class QuizResponse(BaseModel):
     total_questions: int
     
     time_taken_seconds: Optional[int] = None
+
+# New models for Daily Quiz Feature
+class StudentQuizAttempt(BaseModel):
+    """Detailed quiz attempt with per-question analytics"""
+    id: Optional[str] = Field(default=None, alias="_id")
+    quiz_id: str
+    student_id: str
+    daily_id: str
+    tenant: str
+    attempt_number: int
+    started_at: str
+    completed_at: Optional[str] = None
+    responses: Dict[str, Any] = Field(default_factory=dict)  # {qid: {answer, is_correct, time_spent, hint_used}}
+    score: float = 0.0
+    xp_earned: int = 0
+    time_taken_seconds: int = 0
+
+class StreakTracking(BaseModel):
+    """Student streak and XP tracking"""
+    id: Optional[str] = Field(default=None, alias="_id")
+    student_id: str
+    tenant: str
+    current_streak: int = 0
+    longest_streak: int = 0
+    total_xp: int = 0
+    badges: List[str] = Field(default_factory=list)
+    last_quiz_date: Optional[str] = None
+    updated_at: str
+
+class QuizAnalytics(BaseModel):
+    """Analytics data for quiz questions"""
+    id: Optional[str] = Field(default=None, alias="_id")
+    quiz_id: str
+    question_id: str
+    tenant: str
+    total_attempts: int = 0
+    correct_count: int = 0
+    avg_time_seconds: float = 0.0
+    hint_usage_count: int = 0
+    difficulty_rating: float = 0.5  # calculated from success rate
+
+
+class QuizQuestionPublic(BaseModel):
+    qid: str
+    question: str
+    question_type: str
+    difficulty: str
+    options: List[QuizOption] = Field(default_factory=list)
+    # Excludes correct, hint, explanation
+
+class QuizPublic(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    daily_id: str
+    subject: str
+    topic: str
+    class_no: int
+    section: str
+    tenant: str
+    questions: List[QuizQuestionPublic]
+    # Include metadata but exclude sensitive fields if any
+    auto_generated: bool = True
+    keywords: List[str] = Field(default_factory=list)
+    difficulty_level: str = "medium"
+    created_at: Optional[str] = None
+    previous_attempt: Optional[Dict[str, Any]] = None # To restore state
+
+    class Config:
+        populate_by_name = True
+
+class AnswerVerificationRequest(BaseModel):
+    quiz_id: str
+    daily_id: str
+    student_id: str
+    qid: str
+    answer: Union[str, List[str]]
+    attempt_number: int = 1
+    time_spent: int = 0
+
+class AnswerVerificationResponse(BaseModel):
+    is_correct: bool
+    message: str
+    hint: Optional[str] = None
+    explanation: Optional[str] = None
+    correct_answer: Optional[Union[str, List[str]]] = None
+    xp_earned: int = 0
+
 
