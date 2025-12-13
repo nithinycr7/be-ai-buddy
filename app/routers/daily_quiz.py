@@ -241,107 +241,189 @@ async def submit_daily_quiz(
 ):
     """
     Submit quiz responses and calculate score/XP
-    - Scores different question types
-    - Calculates XP with bonuses
-    - Updates streak tracking
-    - Stores analytics data
+    - Uses weighted scoring (Easy=1, Med=2, Hard=3)
+    - Attempt penalty (1st=100%, 2nd=50%)
+    - Updates StudentDailyProgress
     """
     db = await get_db()
+    from bson import ObjectId
     
     # 1. Get quiz
-    from bson import ObjectId
     quiz = await db.quizzes.find_one({"_id": ObjectId(request.quiz_id)})
-
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
+        
+    # 2. Get active attempt (populated by verify-answer)
+    attempt = await db.student_quiz_attempts.find_one({
+        "quiz_id": request.quiz_id,
+        "student_id": request.student_id,
+        "completed_at": None,
+        "tenant": tenant
+    })
     
-    # 2. Calculate score
+    # If no active attempt found (e.g. legacy or direct submit?), use request data or create new
+    # But for accurate attempt-tracking, we prefer the DB record.
+    # Fallback: if attempt doesn't exist, we assume 1st attempt for everything (optimistic)
+    
+    responses_db = attempt.get("responses", {}) if attempt else {}
+    
+    # 3. Calculate Weighted Score
     questions = quiz.get("questions", [])
-    total_questions = len(questions)
+    total_max_points = 0.0
+    student_earned_points = 0.0
+    
+    difficulty_weights = {"easy": 1.0, "medium": 2.0, "hard": 3.0}
+    
     correct_count = 0
-    detailed_responses = {}
+    total_questions = len(questions)
     
     for q in questions:
+        diff = q.get("difficulty", "medium").lower()
+        weight = difficulty_weights.get(diff, 2.0)
+        total_max_points += weight
+        
         qid = q["qid"]
-        student_response = request.responses.get(qid, {})
-        student_answer = student_response.get("answer", [])
-        correct_answer = q.get("correct", [])
         
-        # Normalize answers for comparison
-        if isinstance(student_answer, str):
-            student_answer = [student_answer.strip().lower()]
-        if isinstance(correct_answer, str):
-            correct_answer = [correct_answer.strip().lower()]
+        # Check DB response first (secure), then request payload
+        resp_data = responses_db.get(qid)
         
-        # Check if correct
-        is_correct = set(student_answer) == set(correct_answer)
+        # If verify-answer was used, we have is_correct and attempt_number in DB
+        if resp_data:
+            is_correct = resp_data.get("is_correct", False)
+            attempt_num = resp_data.get("attempt_number", 1)
+        else:
+            # Fallback to trusted request (less secure but handles edge cases)
+            # Re-verify logical correctness
+            student_response = request.responses.get(qid, {})
+            ans = student_response.get("answer", [])
+            corr = q.get("correct", [])
+            
+             # Normalize
+            if isinstance(ans, str): ans = [ans.strip().lower()]
+            if isinstance(corr, str): corr = [corr.strip().lower()]
+            
+            is_correct = set(ans) == set(corr)
+            attempt_num = 1 # Assume 1st attempt if not in DB
+        
         if is_correct:
             correct_count += 1
-        
-        # Store detailed response
-        detailed_responses[qid] = {
-            "answer": student_answer,
-            "is_correct": is_correct,
-            "time_spent": student_response.get("time_spent", 0),
-            "hint_used": student_response.get("hint_used", False)
+            # Apply Attempt Penalty
+            multiplier = 1.0 if attempt_num == 1 else 0.5
+            student_earned_points += (weight * multiplier)
+            
+    # Scale to 80% (Max Quiz Weight)
+    # If total_max_points is 0 (empty quiz), score is 0
+    quiz_score_80 = (student_earned_points / total_max_points * 80.0) if total_max_points > 0 else 0.0
+    
+    # 4. Update StudentDailyProgress
+    now = datetime.utcnow().isoformat()
+    progress = await db.student_daily_progress.find_one({
+        "student_id": request.student_id,
+        "daily_id": request.daily_id
+    })
+    
+    if not progress:
+        # Should exist if summary/story tracked, else create
+        progress = {
+            "student_id": request.student_id,
+            "daily_id": request.daily_id,
+            "tenant": tenant,
+            "summary_viewed": False,
+            "story_generated": False,
+            "quiz_score": 0.0,
+            "total_score": 0.0,
+            "created_at": now
         }
     
-    score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+    progress["quiz_score"] = round(quiz_score_80, 2)
+    progress["quiz_attempts"] = progress.get("quiz_attempts", 0) + 1
     
-    # 3. Calculate XP
+    # is_complete: Attempted all questions (regardless of correctness)
+    # We check if we have responses for all QIDs
+    progress["is_complete"] = correct_count >= 0 # Trivial true if submitted? 
+    # Logic: "True if student has attempted ALL quiz questions"
+    # request.responses keys should match quiz questions
+    attempted_qids = set(request.responses.keys())
+    all_qids = set(q["qid"] for q in questions)
+    progress["is_complete"] = all_qids.issubset(attempted_qids)
+    
+    # Recalculate Total Score (10 + 10 + 80)
+    total = 0.0
+    if progress.get("summary_viewed"): total += 10.0
+    if progress.get("story_generated"): total += 10.0
+    total += progress["quiz_score"]
+    progress["total_score"] = min(total, 100.0)
+    progress["updated_at"] = now
+    
+    await db.student_daily_progress.update_one(
+        {"student_id": request.student_id, "daily_id": request.daily_id},
+        {"$set": progress},
+        upsert=True
+    )
+
+    # 5. Finalize Attempt
+    xp_earned = int(student_earned_points * 10) # 10XP per weighted point?
+    # Or keep original XP logic? Original: 10xp per correct, +bonus.
+    # Let's simple use: floor(quiz_score_80) as XP? 
+    # Or stick to original calculate_xp function for consistency with streak logic?
+    # Original function uses correct_count. Let's reuse it for now but maybe scale it.
+    
     xp_earned = calculate_xp(
         correct_count=correct_count,
         total_questions=total_questions,
-        responses=detailed_responses,
+        responses=request.responses, # Use detailed request responses for metrics like time_spent
         time_taken=request.time_taken_seconds
     )
     
-    # 4. Get attempt number
-    existing_attempts = await db.student_quiz_attempts.count_documents({
-        "quiz_id": request.quiz_id,
-        "student_id": request.student_id
-    })
-    attempt_number = existing_attempts + 1
-    
-    # 5. Store attempt
-    now = datetime.utcnow().isoformat() + "Z"
-    attempt_doc = {
-        "quiz_id": request.quiz_id,
-        "student_id": request.student_id,
-        "daily_id": request.daily_id,
-        "tenant": tenant,
-        "attempt_number": attempt_number,
-        "started_at": now,
-        "completed_at": now,
-        "responses": detailed_responses,
-        "score": score,
-        "xp_earned": xp_earned,
-        "time_taken_seconds": request.time_taken_seconds
-    }
-    
-    result = await db.student_quiz_attempts.insert_one(attempt_doc)
-    attempt_id = str(result.inserted_id)
-    
-    # 6. Update streak tracking
+    if attempt:
+        await db.student_quiz_attempts.update_one(
+            {"_id": attempt["_id"]},
+            {"$set": {
+                "completed_at": now,
+                "score": quiz_score_80, # Store the weighted 80-scale score
+                "raw_score_percent": (student_earned_points/total_max_points*100) if total_max_points else 0, # For ref
+                "xp_earned": xp_earned,
+                "time_taken_seconds": request.time_taken_seconds
+            }}
+        )
+        attempt_id = str(attempt["_id"])
+    else:
+        # Create completed attempt if none existed
+        new_attempt = {
+            "quiz_id": request.quiz_id,
+            "student_id": request.student_id,
+            "daily_id": request.daily_id,
+            "tenant": tenant,
+            "attempt_number": 1,
+            "started_at": now,
+            "completed_at": now,
+            "score": quiz_score_80,
+            "xp_earned": xp_earned,
+            "responses": request.responses, # Fallback
+            "time_taken_seconds": request.time_taken_seconds
+        }
+        res = await db.student_quiz_attempts.insert_one(new_attempt)
+        attempt_id = str(res.inserted_id)
+
+    # 6. Streak & Analytics (Existing logic)
     streak_data = await update_streak_tracking(
         db=db,
         student_id=request.student_id,
         tenant=tenant,
         xp_earned=xp_earned,
-        score=score
+        score=progress["total_score"] # Use Total Score for streak threshold? Or Quiz Score?
     )
     
-    # 7. Update analytics
     await update_quiz_analytics(
         db=db,
         quiz_id=request.quiz_id,
         tenant=tenant,
-        responses=detailed_responses
+        responses=request.responses
     )
     
     return QuizSubmissionResponse(
         attempt_id=attempt_id,
-        score=score,
+        score=quiz_score_80,
         correct_count=correct_count,
         total_questions=total_questions,
         xp_earned=xp_earned,

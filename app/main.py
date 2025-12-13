@@ -3,8 +3,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress, daily_quiz
+from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress, daily_quiz, leaderboard
 from .routers.teacher import lesson_plan
+
+# ...
+
 
 # Configure logging to show in console
 logging.basicConfig(
@@ -37,6 +40,7 @@ app.include_router(chat.router, prefix=settings.API_PREFIX)
 app.include_router(progress.router, prefix=settings.API_PREFIX)
 app.include_router(lesson_plan.router, prefix=settings.API_PREFIX)
 app.include_router(daily_quiz.router, prefix=settings.API_PREFIX)
+app.include_router(leaderboard.router, prefix=settings.API_PREFIX)
 
 @app.on_event("startup")
 async def on_startup():
