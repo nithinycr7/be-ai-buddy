@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress, daily_quiz, leaderboard
+from .routers import students, classes, quizzes, ai, admin, question, quiz, chat, progress, daily_quiz, leaderboard, audio_upload
 from .routers.teacher import lesson_plan
 
 # ...
@@ -41,6 +41,7 @@ app.include_router(progress.router, prefix=settings.API_PREFIX)
 app.include_router(lesson_plan.router, prefix=settings.API_PREFIX)
 app.include_router(daily_quiz.router, prefix=settings.API_PREFIX)
 app.include_router(leaderboard.router, prefix=settings.API_PREFIX)
+app.include_router(audio_upload.router, prefix=settings.API_PREFIX)
 
 @app.on_event("startup")
 async def on_startup():
@@ -58,6 +59,8 @@ routers (REST, ready for your React UI):
 POST /api/students / GET /api/students/{student_id}
 
 POST /api/classes/daily → create daily lesson (date, class, section, subject, topics, summary)
+
+POST /api/classes/daily/{daily_id}/transcribe → upload audio (Azure Speech)
 
 POST /api/classes/daily/{daily_id}/summarize → combine summary+transcript → bullets (Azure OpenAI)
 
