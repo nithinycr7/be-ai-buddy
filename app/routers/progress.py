@@ -3,7 +3,10 @@ from datetime import datetime, date
 from typing import Optional, List
 from ..core.security import api_key_guard, get_tenant
 from ..db.mongo import get_db
-from ..models.schemas import StudentProgress
+from ..models.schemas import StudentDailyProgress
+
+# ...
+
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/progress", tags=["progress"], dependencies=[Depends(api_key_guard)])
@@ -14,24 +17,23 @@ class TrackActivityRequest(BaseModel):
     activity: str  # "summary_viewed" or "story_generated"
     story_id: Optional[str] = None
 
-def calculate_completion(progress_doc: dict) -> tuple[float, bool]:
-    """Calculate completion percentage and status based on activities."""
-    completion = 0.0
+
+def calculate_total_score(progress_doc: dict) -> float:
+    """Calculate total score based on activities."""
+    score = 0.0
     
-    # Summary: 25%
+    # Summary: 10%
     if progress_doc.get("summary_viewed"):
-        completion += 25.0
+        score += 10.0
     
-    # Story: 25%
+    # Story: 10%
     if progress_doc.get("story_generated"):
-        completion += 25.0
+        score += 10.0
     
-    # Quiz: 50% (scaled by best score)
-    if progress_doc.get("quiz_best_score") is not None:
-        completion += (progress_doc["quiz_best_score"] / 100.0) * 50.0
+    # Quiz: Up to 80% (Already calculated and stored in quiz_score)
+    score += progress_doc.get("quiz_score", 0.0)
     
-    is_completed = completion >= 75.0
-    return completion, is_completed
+    return min(score, 100.0)
 
 @router.post("/track")
 async def track_activity(request: TrackActivityRequest, tenant: str = Depends(get_tenant)):
@@ -40,17 +42,23 @@ async def track_activity(request: TrackActivityRequest, tenant: str = Depends(ge
     
     # Get daily class info for validation
     from bson import ObjectId
-    daily_class = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id)})
+    try:
+        daily_oid = ObjectId(request.daily_id)
+        daily_class = await db.classes_daily.find_one({"_id": daily_oid})
+    except:
+        raise HTTPException(status_code=400, detail="Invalid daily_id")
+        
     if not daily_class:
         raise HTTPException(status_code=404, detail="Daily class not found")
     
     # Find or create progress document
-    progress = await db.student_progress.find_one({
+    # Using 'student_daily_progress' collection as per new design
+    progress = await db.student_daily_progress.find_one({
         "student_id": request.student_id,
         "daily_id": request.daily_id
     })
     
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.utcnow().isoformat()
     
     if not progress:
         # Create new progress document
@@ -58,16 +66,14 @@ async def track_activity(request: TrackActivityRequest, tenant: str = Depends(ge
             "student_id": request.student_id,
             "daily_id": request.daily_id,
             "tenant": tenant,
-            "date": daily_class["date"],
-            "class_no": daily_class["class_no"],
-            "section": daily_class["section"],
-            "subject": daily_class["subject"],
+            "school_id": daily_class.get("school_id"), # Assuming school_id is in daily_class
+            "date": daily_class.get("date"),
             "summary_viewed": False,
             "story_generated": False,
-            "quiz_taken": False,
+            "quiz_score": 0.0,
             "quiz_attempts": 0,
-            "completion_percentage": 0.0,
-            "is_completed": False,
+            "total_score": 0.0,
+            "is_complete": False,
             "created_at": now,
             "updated_at": now
         }
@@ -77,30 +83,24 @@ async def track_activity(request: TrackActivityRequest, tenant: str = Depends(ge
     
     if request.activity == "summary_viewed":
         update_fields["summary_viewed"] = True
-        update_fields["summary_viewed_at"] = now
+        progress["summary_viewed"] = True
     elif request.activity == "story_generated":
         update_fields["story_generated"] = True
-        update_fields["story_generated_at"] = now
-        if request.story_id:
-            update_fields["story_id"] = request.story_id
+        progress["story_generated"] = True
     else:
         raise HTTPException(status_code=400, detail="Invalid activity type")
     
-    # Update progress document
-    progress.update(update_fields)
-    
-    # Recalculate completion
-    completion, is_completed = calculate_completion(progress)
-    progress["completion_percentage"] = completion
-    progress["is_completed"] = is_completed
-    
-    if is_completed and not progress.get("completed_at"):
-        progress["completed_at"] = now
+    # Recalculate score
+    new_total = calculate_total_score(progress)
+    progress["total_score"] = new_total
+    update_fields["total_score"] = new_total
     
     # Upsert to database
-    await db.student_progress.update_one(
+    await db.student_daily_progress.update_one(
         {"student_id": request.student_id, "daily_id": request.daily_id},
-        {"$set": progress},
+        {"$set": update_fields, "$setOnInsert": {
+            k: v for k, v in progress.items() if k not in update_fields and k != "total_score"
+        }},
         upsert=True
     )
     
@@ -111,7 +111,7 @@ async def track_activity(request: TrackActivityRequest, tenant: str = Depends(ge
     
     return progress
 
-@router.get("", response_model=List[StudentProgress])
+@router.get("", response_model=List[StudentDailyProgress])
 async def get_progress(
     student_id: str,
     start_date: Optional[str] = None,
@@ -128,13 +128,15 @@ async def get_progress(
     if end_date:
         query.setdefault("date", {})["$lte"] = end_date
     
-    cursor = db.student_progress.find(query).sort("date", -1)
+    # Updated to use new collection
+    cursor = db.student_daily_progress.find(query).sort("date", -1)
     results = []
     
     async for doc in cursor:
         if "_id" in doc:
-            doc["_id"] = str(doc["_id"])
-        results.append(StudentProgress(**doc))
+            doc["id"] = str(doc["_id"]) # Ensure id mapping
+            del doc["_id"]
+        results.append(StudentDailyProgress(**doc))
     
     return results
 
@@ -160,9 +162,9 @@ async def get_weekly_summary(
                 "_id": "$date",
                 "total_classes": {"$sum": 1},
                 "completed_classes": {
-                    "$sum": {"$cond": ["$is_completed", 1, 0]}
+                    "$sum": {"$cond": ["$is_complete", 1, 0]}
                 },
-                "avg_completion": {"$avg": "$completion_percentage"}
+                "avg_completion": {"$avg": "$total_score"}
             }
         },
         {
@@ -170,7 +172,8 @@ async def get_weekly_summary(
         }
     ]
     
-    cursor = db.student_progress.aggregate(pipeline)
+    # Updated to use new collection
+    cursor = db.student_daily_progress.aggregate(pipeline)
     results = []
     
     async for doc in cursor:

@@ -169,7 +169,13 @@ async def transcribe_blob_or_create(payload: dict = Body(...), tenant: str = Dep
     }
 
 @router.get("/daily", response_model=list[DailyClass])
-async def list_daily_classes(class_no: int, section: str, date: str | None = None, tenant: str = Depends(get_tenant)):
+async def list_daily_classes(
+    class_no: int, 
+    section: str, 
+    date: str | None = None, 
+    student_id: str | None = None,
+    tenant: str = Depends(get_tenant)
+):
     db = await get_db()
     query = {"tenant": tenant, "class_no": class_no, "section": section}
     if date:
@@ -177,8 +183,34 @@ async def list_daily_classes(class_no: int, section: str, date: str | None = Non
     
     cursor = db.classes_daily.find(query).sort("date", -1).limit(50)
     results = []
-    async for doc in cursor:
+    
+    # Process classes
+    classes = await cursor.to_list(length=50)
+    
+    # If student_id provided, fetch progress
+    progress_map = {}
+    if student_id and classes:
+        daily_ids = [str(c["_id"]) for c in classes]
+        p_cursor = db.student_daily_progress.find({
+            "student_id": student_id,
+            "daily_id": {"$in": daily_ids}
+        })
+        async for p in p_cursor:
+            progress_map[p["daily_id"]] = p
+            
+    for doc in classes:
         if "_id" in doc:
             doc["_id"] = str(doc["_id"])
-        results.append(DailyClass(**doc))
+        
+        # Instantiate DailyClass
+        d_obj = DailyClass(**doc)
+        
+        # Inject progress
+        if d_obj.id in progress_map:
+            p = progress_map[d_obj.id]
+            d_obj.completed = p.get("is_complete", False)
+            d_obj.progress = p.get("total_score", 0.0)
+            
+        results.append(d_obj)
+        
     return results

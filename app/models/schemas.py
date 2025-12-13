@@ -57,6 +57,8 @@ class DailyClass(BaseModel):
     subject: str
     topics: List[str] = []
     summary: Optional[str] = None
+    completed: bool = False
+    progress: float = 0.0 # 0-100
 
 class QuizOption(BaseModel):
     key: str
@@ -297,5 +299,45 @@ class AnswerVerificationResponse(BaseModel):
     explanation: Optional[str] = None
     correct_answer: Optional[Union[str, List[str]]] = None
     xp_earned: int = 0
+
+
+class StudentDailyProgress(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    student_id: str
+    daily_id: str
+    tenant: str
+    school_id: Optional[str] = None
+    
+    summary_viewed: bool = False
+    story_generated: bool = False
+    
+    quiz_score: float = 0.0 # 0-80
+    quiz_attempts: int = 0
+    
+    total_score: float = 0.0 # 0-100
+    is_complete: bool = False # True if all questions attempted
+    
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    
+    class Config:
+        populate_by_name = True
+
+
+class Badge(BaseModel):
+    id: str
+    name: str
+    icon: str
+    description: str
+    condition: str
+
+
+class StudentBadge(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    student_id: str
+    badge_id: str
+    awarded_at: str
+    tenant: str
+
 
 
