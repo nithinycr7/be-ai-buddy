@@ -345,12 +345,9 @@ For the application to function fully in Azure, ensure the following **Environme
 | `MONGODB_DB` | **Required**. Database name. | `mymedha_dev` |
 | `AZURE_OPENAI_ENDPOINT` | **Required**. Endpoint for Azure OpenAI. | `https://...` |
 | `AZURE_OPENAI_API_KEY` | **Required**. Key for Azure OpenAI. | `...` |
-| `AZURE_SPEECH_KEY` | **Required**. Key for Azure Speech Services. | `...` |
-| `AZURE_SPEECH_REGION` | **Required**. Region for Speech Services. | `eastus` |
 | `AZURE_OPENAI_CHAT_DEPLOYMENT` | Deployment name for Chat completion. | `gpt-4o-mini` |
 | `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`| Deployment name for Embeddings. | `text-embedding-3-large` |
 | `API_KEY_VALUE` | Security key for internal API access. | `your-secure-key` |
-| `AZURE_BLOB_CONN_STR` | Connection string for Azure Blob Storage. | `DefaultEndpointsProtocol=...` |
 ```
 
 ## 📈 Performance

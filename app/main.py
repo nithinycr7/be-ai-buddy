@@ -59,8 +59,6 @@ POST /api/students / GET /api/students/{student_id}
 
 POST /api/classes/daily → create daily lesson (date, class, section, subject, topics, summary)
 
-POST /api/classes/daily/{daily_id}/transcribe → upload audio (Azure Speech)
-
 POST /api/classes/daily/{daily_id}/summarize → combine summary+transcript → bullets (Azure OpenAI)
 
 POST /api/quizzes/from-daily/{daily_id} → auto-generate 5 MCQs from the day’s content
@@ -74,12 +72,4 @@ POST /api/ai/story (body: daily_id, student_id) → persona-based short story
 GET /api/admin/teacher-performance?teacher_email=... → stub metrics
 """
 
-@app.get("/debug/config")
-def dbg():
-    def mask(s): 
-        return s[:12] + "…" if s else None
-    return {
-        "api_prefix": settings.API_PREFIX,
-        "blob_conn_str_set": bool(settings.AZURE_BLOB_CONN_STR),
-        "blob_conn_str_preview": mask(settings.AZURE_BLOB_CONN_STR),
-    }
+
