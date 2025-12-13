@@ -28,9 +28,10 @@ class Settings(BaseSettings):
     AZURE_OPENAI_CHAT_DEPLOYMENT: str = "gpt-4o-mini"
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT: str = "text-embedding-3-large"
 
-    # Azure Speech
-    AZURE_SPEECH_KEY: str =""
-    AZURE_SPEECH_REGION: str = "eastus"
-    AZURE_BLOB_CONN_STR: str = ""
+    # Azure Storage (for audio upload)
+    AZURE_STORAGE_CONNECTION_STRING: str = ""
+    AUDIO_CONTAINER_NAME: str = "schools"
+    AUDIO_QUEUE_NAME: str = "transcription-queue"
+
 
 settings = Settings()

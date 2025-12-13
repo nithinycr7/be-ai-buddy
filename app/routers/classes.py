@@ -46,6 +46,7 @@ async def create_daily(payload: DailyClass, tenant: str = Depends(get_tenant)):
     payload.tenant = tenant
     return payload
 
+
 @router.post("/daily/{daily_id}/summarize", response_model=Summary)
 async def summarize_daily(daily_id: str):
     db = await get_db()
@@ -60,7 +61,6 @@ async def summarize_daily(daily_id: str):
     text = await ai_summarize(base) if base else ""
     res = await db.summaries.insert_one({"daily_id": daily_id, "text": text})
     return Summary(id=str(res.inserted_id), daily_id=daily_id, text=text)
-
 
 
 @router.get("/daily", response_model=list[DailyClass])
