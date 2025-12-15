@@ -33,7 +33,7 @@ async def upload_audio(
             - selectedClass (required): Class number
             - selectedSection (required): Section identifier
             - selectedSubject (required): Subject name
-            - selectedTopic (optional): Topic/chapter name
+            - selectedTopics (optional): List of Topic/chapter names
         tenant: Tenant ID from header (X-Tenant-ID)
     
     Returns:
