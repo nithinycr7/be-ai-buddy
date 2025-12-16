@@ -96,12 +96,12 @@ class AudioUploadService:
         random_id = random.randint(1, 100)
         
         if not topic:
-            topic_suffix = f"_topic{random_id}"
+            topic_suffix = "_topic"
         else:
-            topic_suffix = f"_{topic.replace(' ', '')}{random_id}"
+            topic_suffix = f"_{topic.replace(' ', '')}"
         
         # Construct filename
-        filename = f"{selected_class}{selected_section}_{subject}{topic_suffix}_{timestamp}.webm"
+        filename = f"{selected_class}{selected_section}_{subject}{topic_suffix}_{timestamp}_{random_id}.webm"
         
         # Construct blob path (inside school folder)
         blob_path = f"{school_id}/{filename}"
