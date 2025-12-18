@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     AZURE_STORAGE_CONNECTION_STRING: str = ""
     AUDIO_CONTAINER_NAME: str = "schools"
     AUDIO_QUEUE_NAME: str = "transcription-queue"
+    SUMMARY_QUEUE_NAME: str = "summary-ready"
+    SUMMARY_POISON_QUEUE_NAME: str = "summary-poison"
+    NCERT_COLLECTION_NAME: str = "ncert_textbooks"
 
 
 settings = Settings()

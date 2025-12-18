@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, quizzes, ai, admin, question, quiz, chat, progress, daily_quiz, leaderboard, audio_upload
+from .routers import students, classes, quizzes, ai, admin, question, quiz, chat, progress, daily_quiz, leaderboard, audio_upload, ncert
 from .routers.teacher import lesson_plan
 
 # ...
@@ -42,6 +42,7 @@ app.include_router(lesson_plan.router, prefix=settings.API_PREFIX)
 app.include_router(daily_quiz.router, prefix=settings.API_PREFIX)
 app.include_router(leaderboard.router, prefix=settings.API_PREFIX)
 app.include_router(audio_upload.router, prefix=settings.API_PREFIX)
+app.include_router(ncert.router, prefix=settings.API_PREFIX)
 
 @app.on_event("startup")
 async def on_startup():
