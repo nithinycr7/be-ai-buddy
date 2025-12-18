@@ -296,6 +296,23 @@ az webapp config appsettings set \
 
 **Production URL**: https://aibuddy-be-awb3eqfyftc7cbe6.canadacentral-01.azurewebsites.net
 
+### Azure Container Apps (Recommended)
+
+1. **Build and Push Image**:
+   Running the included script `deploy_backend.ps1` will build the Docker image and push it to your Azure Container Registry (`mymedhatranscribe`).
+
+2. **Deploy**:
+   The script also handles deployment using `az containerapp up`.
+
+   ```powershell
+   ./deploy_backend.ps1
+   ```
+
+   **Configuration**:
+   - Ensure the `MONGODB_URI` environment variable is set in the Azure Container App settings.
+   - The app uses `mymedha_dev` database by default when deployed via this script.
+
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -316,6 +333,21 @@ allow_origins=["https://your-frontend-url.com"]
 **API Key Invalid**:
 ```bash
 # Check x-api-key header matches API_KEY_VALUE in .env
+```
+
+### Azure Container App Configuration
+
+For the application to function fully in Azure, ensure the following **Environment Variables** are configured in the Container App settings:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `MONGODB_URI` | **Required**. Connection string for CosmosDB/MongoDB. | `mongodb+srv://...` |
+| `MONGODB_DB` | **Required**. Database name. | `mymedha_dev` |
+| `AZURE_OPENAI_ENDPOINT` | **Required**. Endpoint for Azure OpenAI. | `https://...` |
+| `AZURE_OPENAI_API_KEY` | **Required**. Key for Azure OpenAI. | `...` |
+| `AZURE_OPENAI_CHAT_DEPLOYMENT` | Deployment name for Chat completion. | `gpt-4o-mini` |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`| Deployment name for Embeddings. | `text-embedding-3-large` |
+| `API_KEY_VALUE` | Security key for internal API access. | `your-secure-key` |
 ```
 
 ## 📈 Performance

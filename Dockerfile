@@ -1,23 +1,30 @@
-# Python FastAPI Backend
+# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Set working directory
-WORKDIR /app
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies for pydub/ffmpeg
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies
+# ffmpeg is often required for pydub/audio processing
+RUN apt-get update && apt-get install -y \
     ffmpeg \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Set work directory
+WORKDIR /app
 
-# Copy application code
-COPY app/ ./app/
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy project
+COPY . .
 
 # Expose port
 EXPOSE 8000
 
-# Run with gunicorn + uvicorn workers for production
-CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "120"]
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

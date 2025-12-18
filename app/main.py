@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress, daily_quiz, leaderboard
+from .routers import students, classes, quizzes, ai, admin, question, quiz, chat, progress, daily_quiz, leaderboard, audio_upload, ncert
 from .routers.teacher import lesson_plan
 
 # ...
@@ -41,6 +41,8 @@ app.include_router(progress.router, prefix=settings.API_PREFIX)
 app.include_router(lesson_plan.router, prefix=settings.API_PREFIX)
 app.include_router(daily_quiz.router, prefix=settings.API_PREFIX)
 app.include_router(leaderboard.router, prefix=settings.API_PREFIX)
+app.include_router(audio_upload.router, prefix=settings.API_PREFIX)
+app.include_router(ncert.router, prefix=settings.API_PREFIX)
 
 @app.on_event("startup")
 async def on_startup():
@@ -74,12 +76,4 @@ POST /api/ai/story (body: daily_id, student_id) → persona-based short story
 GET /api/admin/teacher-performance?teacher_email=... → stub metrics
 """
 
-@app.get("/debug/config")
-def dbg():
-    def mask(s): 
-        return s[:12] + "…" if s else None
-    return {
-        "api_prefix": settings.API_PREFIX,
-        "blob_conn_str_set": bool(settings.AZURE_BLOB_CONN_STR),
-        "blob_conn_str_preview": mask(settings.AZURE_BLOB_CONN_STR),
-    }
+
