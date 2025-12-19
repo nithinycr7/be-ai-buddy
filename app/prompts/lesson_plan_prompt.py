@@ -13,6 +13,7 @@ Chapter: {chapter}
 Follow the schema STRICTLY:
 
 {{
+  "lesson_overview": "string",
   "learning_outcomes": {{
     "items": ["string", "string"],
     "time": number
@@ -37,6 +38,7 @@ CONTENT QUALITY RULES:
 - Practice activity MUST be actionable and written as step-by-step instructions (minimum 3 steps).
 - Assessment MUST include one question students can respond to verbally or in writing.
 - Time values must feel realistic for a 40–50 minute lesson.
+- lesson_overview MUST be a concise 3-5 sentence summary of the entire lesson flow (Goal -> Activity -> Outcome).
 
 STRICT OUTPUT RULES:
 - DO NOT add extra fields.

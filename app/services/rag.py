@@ -153,22 +153,39 @@ async def upsert_cbse_doc(chapter: str, subject: str, class_no: int, text: str,
 # Vector Search with cosmosSearch
 # ----------------------------
 
-async def search_cbse(query: str, class_no: int, subject: str, k: int = 4) -> List[Dict[str, Any]]:
+    # Build filter
+    filt_conditions = [
+        {"class_no": {"$eq": class_no}},
+        {"subject":  {"$eq": subject}},
+    ]
+    
+    # Optional chapter filter
+    # Check if 'chapter' key exists in query metadata or passed explicitly (TODO: Update signature if needed)
+    # For now, we rely on the caller passing it via query string hacking or update signature.
+    # Updating signature is cleaner.
+    pass
+
+async def search_cbse(query: str, class_no: int, subject: str, k: int = 4, chapter: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Embed the query once, then run a $search.cosmosSearch pipeline with pre-filters.
     """
     db = await get_db()
     coll = db.cbse_docs
 
-    # Get query vector and make sure index dimension matches (first call only)
+    # Get query vector
     qvec = (await embed([query]))[0]
     await _ensure_vector_index(dimensions=len(qvec))
 
     # Build filter
-    filt: Dict[str, Any] = {"$and": [
+    filt_conditions = [
         {"class_no": {"$eq": class_no}},
         {"subject":  {"$eq": subject}},
-    ]}
+    ]
+    
+    if chapter:
+         filt_conditions.append({"chapter": {"$eq": chapter}})
+
+    filt: Dict[str, Any] = {"$and": filt_conditions}
 
     pipeline = [
         {"$search": {

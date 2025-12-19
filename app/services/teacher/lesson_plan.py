@@ -145,7 +145,9 @@ class LessonPlanService:
 
                 raw = resp.choices[0].message.content.strip()
                 parsed = json.loads(raw)
+                print(f"DEBUG: LLM Raw Parsed Keys: {list(parsed.keys())}")
                 response_data = validate_and_fix(parsed)
+                print(f"DEBUG: Validated Data Keys: {list(response_data.keys())}")
                 break
 
             except Exception as e:
@@ -155,6 +157,8 @@ class LessonPlanService:
             raise ValueError("❌ Failed: LLM did not provide valid JSON after retries.")
 
         now = datetime.now(timezone.utc)
+
+
 
         draft_doc = {
             "teacher_id": teacher_id,
@@ -167,6 +171,9 @@ class LessonPlanService:
             "updated_at": now,
             "lastAccessedAt": now
         }
+
+
+        print("draft_doc:::", draft_doc)
 
         inserted = await self.drafts.insert_one(draft_doc)
         draft_id = str(inserted.inserted_id)

@@ -183,6 +183,7 @@ class Quiz(BaseModel):
     tenant: str
     questions: List[QuizQuestion]
     auto_generated: bool = True
+    source: Optional[str] = Field(default=None, description="Origin: teacher_custom, teacher_textbook, auto_transcript, auto_summary")
     transcript_id: Optional[str] = None
     generation_confidence: float = 0.0
     teacher_edited: bool = False

@@ -1,4 +1,5 @@
 SCHEMA = {
+    "lesson_overview": str,
     "learning_outcomes": {
         "items": list,
         "time": int
@@ -31,11 +32,20 @@ def normalize(value, expected_type):
 
 def validate_and_fix(data: dict) -> dict:
     fixed = {}
-    for section, fields in SCHEMA.items():
-        fixed[section] = {}
-        raw_section = data.get(section, {})
-
-        for key, t in fields.items():
-            fixed[section][key] = normalize(raw_section.get(key), t)
+    for key, expected_structure in SCHEMA.items():
+        # Case 1: Nested Section (dict)
+        if isinstance(expected_structure, dict):
+            fixed[key] = {}
+            raw_section = data.get(key, {})
+            # If raw_section is not a dict (e.g. missing or wrong type), treat as empty
+            if not isinstance(raw_section, dict):
+                raw_section = {}
+            
+            for field, t in expected_structure.items():
+                fixed[key][field] = normalize(raw_section.get(field), t)
+        
+        # Case 2: Flat Field (type)
+        elif isinstance(expected_structure, type):
+            fixed[key] = normalize(data.get(key), expected_structure)
 
     return fixed

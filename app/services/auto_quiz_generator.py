@@ -193,6 +193,7 @@ class AutoQuizGenerator:
             "tenant": tenant,
             "questions": questions_data,
             "auto_generated": True,
+            "source": "auto_transcript",
             "transcript_id": None,  # TODO: Add when connecting to mymedha_db
             "generation_confidence": confidence,
             "teacher_edited": False,
@@ -257,6 +258,7 @@ class AutoQuizGenerator:
             "tenant": tenant,
             "questions": questions_data,
             "auto_generated": True,
+            "source": "auto_revision",
             "transcript_id": None,
             "generation_confidence": 0.3,  # Low confidence for revision
             "teacher_edited": False,
