@@ -3,11 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, quizzes, ai, admin, question, quiz, chat, progress, daily_quiz, leaderboard, audio_upload, ncert
-from .routers import students, classes, quizzes, ai, admin, question, quiz, chat, progress, daily_quiz, leaderboard, audio_upload, ncert
-from .routers.teacher import lesson_plan, quiz as teacher_quiz
-
-# ...
+from .routers import students, classes, ai, admin, question, chat, progress, daily_quiz, leaderboard, audio_upload, ncert
+from .routers.teacher import lesson_plan, quiz as teacher_quiz, insights as teacher_insights
 
 
 # Configure logging to show in console
@@ -15,8 +12,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
-
 
 app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
 
@@ -32,18 +27,18 @@ app.add_middleware(
 # Routers
 app.include_router(students.router, prefix=settings.API_PREFIX)
 app.include_router(classes.router, prefix=settings.API_PREFIX)
-app.include_router(quizzes.router, prefix=settings.API_PREFIX)
 app.include_router(ai.router, prefix=settings.API_PREFIX)
 app.include_router(admin.router, prefix=settings.API_PREFIX)
 app.include_router(question.router, prefix=settings.API_PREFIX)
-app.include_router(quiz.router, prefix=settings.API_PREFIX)
 app.include_router(chat.router, prefix=settings.API_PREFIX)
 app.include_router(progress.router, prefix=settings.API_PREFIX)
 app.include_router(lesson_plan.router, prefix=settings.API_PREFIX)
 app.include_router(daily_quiz.router, prefix=settings.API_PREFIX)
 app.include_router(leaderboard.router, prefix=settings.API_PREFIX)
+app.include_router(audio_upload.router, prefix=settings.API_PREFIX)
 app.include_router(ncert.router, prefix=settings.API_PREFIX)
 app.include_router(teacher_quiz.router, prefix=f"{settings.API_PREFIX}/teacher/quiz", tags=["Teacher Quiz"])
+app.include_router(teacher_insights.router, prefix=f"{settings.API_PREFIX}/teacher/insights", tags=["Teacher Insights"])
 
 @app.on_event("startup")
 async def on_startup():

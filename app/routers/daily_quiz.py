@@ -323,11 +323,16 @@ async def submit_daily_quiz(
     })
     
     if not progress:
+        # Fetch daily class to get the date
+        daily_class = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id)})
+        class_date = daily_class.get("date") if daily_class else datetime.utcnow().date().isoformat()
+        
         # Should exist if summary/story tracked, else create
         progress = {
             "student_id": request.student_id,
             "daily_id": request.daily_id,
             "tenant": tenant,
+            "date": class_date, # Critical for Insights filtering
             "summary_viewed": False,
             "story_generated": False,
             "quiz_score": 0.0,
