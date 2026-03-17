@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import List, Optional, Dict, Any, Union
 from datetime import date
@@ -90,6 +91,7 @@ class Story(BaseModel):
     student_id: Optional[str] = None
     persona_used: Optional[str] = None
     text: str
+    structured_content: Optional[Dict[str, Any]] = None
     tokens_used: Optional[int] = None
     generation_count: Optional[int] = None
 

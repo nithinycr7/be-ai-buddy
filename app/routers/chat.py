@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import List, Literal, Optional, AsyncGenerator
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse

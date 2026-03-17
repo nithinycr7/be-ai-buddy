@@ -1,3 +1,4 @@
+from __future__ import annotations
 from fastapi import Header, HTTPException, status, Depends
 from .config import settings
 

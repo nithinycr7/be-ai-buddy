@@ -1,3 +1,4 @@
+from __future__ import annotations
 # app/routers/classes.py
 from fastapi import APIRouter, Depends, HTTPException, Body
 from datetime import date as dt_date

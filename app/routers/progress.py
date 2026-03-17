@@ -1,3 +1,4 @@
+from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime, date
 from typing import Optional, List

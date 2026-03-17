@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     AZURE_OPENAI_CHAT_DEPLOYMENT: str = "gpt-4o-mini"
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT: str = "text-embedding-3-large"
 
+    # Azure AI Speech Service — STT (Speech-to-Text)
+    AZURE_SPEECH_KEY: str = ""
+    AZURE_SPEECH_REGION: str = ""
+
+    # Azure AI Speech Service — TTS (Text-to-Speech, separate resource)
+    AZURE_SPEECH_TTS_KEY: str = ""
+    AZURE_SPEECH_TTS_REGION: str = "centralindia"
+
     # Azure Storage (for audio upload)
     AZURE_STORAGE_CONNECTION_STRING: str = ""
     AUDIO_CONTAINER_NAME: str = "schools"

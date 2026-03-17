@@ -1,3 +1,4 @@
+from __future__ import annotations
 from openai import AzureOpenAI
 
 from app.services.rag import search_cbse

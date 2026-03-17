@@ -1,3 +1,4 @@
+from __future__ import annotations
 from fastapi import APIRouter, Depends
 from ..core.security import api_key_guard
 from ..db.mongo import get_db
