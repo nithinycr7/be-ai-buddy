@@ -16,38 +16,51 @@ class ChatMessage(BaseModel):
     content: str = Field(..., min_length=1)
 
 class ChatRequest(BaseModel):
-    messages: List[ChatMessage] = Field(..., min_items=1)   
+    messages: List[ChatMessage] = Field(..., min_items=1)
     # Optional lecture context to ground the answer
     summary: Optional[str] = None
     persona: Optional[str] = None
+    subject: Optional[str] = None
+    topic: Optional[str] = None
     temperature: float = 0.2
-    max_tokens: int = 600
+    max_tokens: int = 1000
 
 class ChatResponse(BaseModel):
     reply: str
 
 SYSTEM_PROMPT_BASE = (
-
-    #  "You are AI Buddy, a kind, concise tutor for school students. "
-    # "Answer clearly in short paragraphs or bullets. "
-    # "Prefer concrete steps and examples. If the user asks about today's lecture,"
-    # "Answer based on the persona and restrict to 2-3 lines"
-    # "use the provided lecture summary if available."
-    # "Do not respond to any questions other than academic queries related to school subjects."
-    # "If the question is not related to school subjects, politely inform the user that you can only assist with 
-
-    "You are AI Buddy, a friendly and curious tutor for students in grades 3-9. "
-    "Your goal is to help students learn through 'Inquisitive Learning' (Socratic method). "
-    "NEVER give the direct answer immediately. Instead, ask a simple, guiding follow-up question "
-    "that helps the student figure it out themselves. "
-    "Keep your responses short (2-3 sentences max) and encouraging. "
-    "Use simple language suitable for a young student. "
-    "If provided, use the lecture summary to frame your questions. "
-    "If the user asks a non-academic question, politely steer them back to learning."
+    "You are AI Buddy, a warm and knowledgeable tutor for students in grades 3-9. "
+    "Your goal is to explain concepts clearly and thoroughly so the student truly understands.\n\n"
+    "RESPONSE STYLE:\n"
+    "- Give clear, well-structured explanations using simple language\n"
+    "- Use bullet points, numbered steps, or short paragraphs for clarity\n"
+    "- Include a real-life example or analogy when helpful\n"
+    "- Use bold for key terms\n"
+    "- After explaining, ask ONE follow-up question to check understanding\n"
+    "- Aim for 4-8 sentences — not too short, not a wall of text\n\n"
+    "RULES:\n"
+    "- If a lecture summary is provided, base your answer on it (this is what the teacher taught)\n"
+    "- Use age-appropriate language (simpler for younger students)\n"
+    "- Be encouraging and supportive\n"
+    "- If the student asks a non-academic question, gently steer them back to learning"
 )
 
 def _build_messages(req: ChatRequest) -> List[dict]:
     msgs: List[dict] = [{"role": "system", "content": SYSTEM_PROMPT_BASE}]
+
+    # Topic context — tells the LLM what the student is currently studying
+    if req.subject and req.topic:
+        msgs.append({
+            "role": "system",
+            "content": (
+                f"The student is currently studying {req.subject} — topic: {req.topic}. "
+                f"If they ask about this topic, answer using the lecture summary below. "
+                f"If they ask about a DIFFERENT subject or topic, answer their question helpfully, "
+                f"then gently remind them: 'By the way, you were studying {req.topic} in {req.subject} — "
+                f"want to continue with that?' Do NOT block or refuse off-topic academic questions."
+            )
+        })
+
     if req.summary:
         msgs.append({
             "role": "system",

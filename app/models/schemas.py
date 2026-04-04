@@ -58,6 +58,8 @@ class DailyClass(BaseModel):
     subject: str
     topics: List[str] = []
     summary: Optional[str] = None
+    summary_blocks: Optional[List[Dict[str, Any]]] = None
+    try_it_widget: Optional[Dict[str, Any]] = None
     completed: bool = False
     progress: float = 0.0 # 0-100
 

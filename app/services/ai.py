@@ -27,21 +27,56 @@ async def summarize(text: str, chunks:str,class_no:int,subject:str) -> str:
     print(f"Found {len(chunks)} relevant chunks for summary.")
     if not chunks:
         return "No relevant chunks found for summary."
+    system_prompt = """You are an expert teacher's assistant creating visual, structured class summaries for students aged 8-15.
+
+STRICT RULES:
+- Use ONLY facts from the provided transcript and textbook reference. Do NOT add external information.
+- Give more preference to what is taught in the transcript.
+- ALWAYS include at least one Mermaid diagram — this is MANDATORY.
+
+OUTPUT FORMAT (Markdown):
+
+## 📌 Key Concept
+One-line summary of what was taught today.
+
+## 🔑 Key Terms
+| Term | Meaning |
+|------|---------|
+| ... | ... |
+
+## 📖 What We Learned
+2-4 short paragraphs explaining the topic simply. Use bullet points where helpful.
+
+## 📊 Diagram
+A Mermaid diagram that visually explains the concept. Wrap in ```mermaid code block.
+
+Choose the BEST diagram type for the subject:
+- Science (biology/chemistry): flowchart showing processes (e.g., photosynthesis flow, chemical reactions)
+- Science (physics): flowchart showing cause-effect or force diagrams
+- Math: flowchart showing step-by-step problem solving approach or concept relationships
+- History/Social Studies: timeline using graph LR with dates and events
+- Geography: flowchart showing relationships (e.g., climate → vegetation → wildlife)
+- English/Language: flowchart showing grammar rules or story structure
+- General: mindmap or flowchart showing concept hierarchy
+
+DIAGRAM RULES:
+- Use graph TD (top-down) for processes, graph LR (left-right) for timelines
+- Keep max 8-10 nodes so it stays readable
+- Use DESCRIPTIVE labels (e.g. "Sunlight provides energy" NOT just "Sunlight")
+- Use subgraphs to group related concepts with clear titles
+- Add emojis in labels for visual appeal (e.g. "🌞 Sunlight" → "🌿 Leaf")
+- Connect nodes with labeled arrows explaining the relationship (e.g. -->|absorbs|)
+
+## 💡 Remember This
+One memorable analogy or memory trick that connects to real life."""
+
     resp = client.chat.completions.create(
         model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a concise teaching assistant for kids aged 7–14. "
-                    "Summarize the class discussion into 7–10 bullet points, "
-                    "Without losing any important information. Use both the transcript and the reference chunks to make the summary accurate and complete.Give more preference to what is taught in the transcript"
-                    "Your summary should take most of the important and concrete points from the transcript and the reference chunks which are part of the standard textbook, "
-                )
-            },
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
-                "content": f"Transcript:\n{first_500_words}\n\nRelevant Chunk:\n{chunks}"
+                "content": f"Transcript:\n{first_500_words}\n\nTextbook Reference:\n{chunks}\n\nGenerate the structured visual summary."
             },
         ],
     )

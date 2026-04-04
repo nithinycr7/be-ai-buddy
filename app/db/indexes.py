@@ -31,3 +31,8 @@ async def ensure(db: AsyncIOMotorDatabase):
     # CBSE RAG docs
     # NOTE: For MongoDB Atlas Vector Search, create a Search Index in Atlas UI named "vector_index" on cbse_docs.embedding
     await db.cbse_docs.create_index("chapter", name="ix_docs_chapter")
+
+    # Curriculum Chapters
+    await db.curriculum_chapters.create_index("chapter_key", unique=True, name="ux_curriculum_chapter_key")
+    await db.curriculum_chapters.create_index([("board", 1), ("class", 1)], name="ix_curriculum_board_class")
+    await db.curriculum_chapters.create_index([("board", 1), ("class", 1), ("subject", 1), ("chapter_number", 1)], name="ix_curriculum_lookup")

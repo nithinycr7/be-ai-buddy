@@ -184,25 +184,58 @@ class SummaryService:
 
     async def _generate_llm_summary(self, transcript: str, context: str) -> str:
         client = get_client()
-        
-        system_prompt = """
-        You are an expert teacher's assistant.
-        Generate a concise, student-friendly summary of the class.
-        Combine the raw transcript with the official NCERT curriculum context.
-        Ensure you mention key activities if discussed.
-        format: Markdown.
-        """
-        
-        user_prompt = f"""
-        # NCERT Framework
-        {context}
-        
-        # Classroom Transcript
-        {transcript}
-        
-        Please generate the summary.
-        """
-        
+
+        system_prompt = """You are an expert teacher's assistant creating visual, structured class summaries for students aged 8-15.
+
+STRICT RULES:
+- Use ONLY facts from the provided transcript and NCERT context. Do NOT add external information.
+- Use language appropriate for the student's class level.
+- ALWAYS include at least one Mermaid diagram — this is MANDATORY.
+
+OUTPUT FORMAT (Markdown):
+
+## 📌 Key Concept
+One-line summary of what was taught today.
+
+## 🔑 Key Terms
+| Term | Meaning |
+|------|---------|
+| ... | ... |
+
+## 📖 What We Learned
+2-4 short paragraphs explaining the topic simply. Use bullet points where helpful.
+
+## 📊 Diagram
+A Mermaid diagram that visually explains the concept. Wrap in ```mermaid code block.
+
+Choose the BEST diagram type for the subject:
+- Science (biology/chemistry): flowchart showing processes (e.g., photosynthesis flow, chemical reactions)
+- Science (physics): flowchart showing cause-effect or force diagrams
+- Math: flowchart showing step-by-step problem solving approach or concept relationships
+- History/Social Studies: timeline using graph LR with dates and events
+- Geography: flowchart showing relationships (e.g., climate → vegetation → wildlife)
+- English/Language: flowchart showing grammar rules or story structure
+- General: mindmap or flowchart showing concept hierarchy
+
+DIAGRAM RULES:
+- Use graph TD (top-down) for processes, graph LR (left-right) for timelines
+- Keep max 8-10 nodes so it stays readable
+- Use DESCRIPTIVE labels (e.g. "Sunlight provides energy" NOT just "Sunlight")
+- Use subgraphs to group related concepts with clear titles
+- Add emojis in labels for visual appeal (e.g. "🌞 Sunlight" → "🌿 Leaf")
+- Connect nodes with labeled arrows explaining the relationship (e.g. -->|absorbs|)
+
+## 💡 Remember This
+One memorable analogy or memory trick that connects to real life."""
+
+        user_prompt = f"""# NCERT Framework
+{context}
+
+# Classroom Transcript
+{transcript}
+
+Generate the structured visual summary following the exact format specified."""
+
         resp = client.chat.completions.create(
             model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
             messages=[
