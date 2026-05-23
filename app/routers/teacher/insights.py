@@ -103,31 +103,45 @@ async def get_class_insights(
                 student_details_map[s["student_id"]] = s
             student_details_map[str(s["_id"])] = s
 
-        # 5. Merge Data
+        # 5. Merge Data — collapse to one row per student.
+        # When no subject filter is supplied, a student can have multiple
+        # progress rows (one per subject) for the same day. We keep the row
+        # with the highest quiz_latest_score so the table never shows duplicates.
+        by_student: dict = {}
+        for progress in progress_data:
+            sid = progress.get("student_id")
+            score = progress.get("quiz_latest_score", 0) or 0
+            existing = by_student.get(sid)
+            if existing is None or score > (existing.get("quiz_latest_score") or 0):
+                by_student[sid] = progress
+            else:
+                # still merge read flags (any True wins) so the student isn't
+                # marked unread just because the higher-scoring subject was unread
+                existing["summary_viewed"] = existing.get("summary_viewed") or progress.get("summary_viewed", False)
+                existing["story_generated"] = existing.get("story_generated") or progress.get("story_generated", False)
+
         insight_students = []
         scores = []
 
-        for progress in progress_data:
-            sid = progress.get("student_id")
+        for sid, progress in by_student.items():
             student = student_details_map.get(sid) or student_details_map.get(str(sid))
-            
-            # If student record missing (orphan progress?), use placeholders
-            student_name = student.get("name", "Unknown") if student else f"Student {sid}"
-            roll_no = student.get("student_id", str(sid)) if student else str(sid)
 
-            # Extract requested fields
+            student_name = student.get("name", "Unknown") if student else f"Student {sid}"
+            roll_no = (
+                student.get("roll_no") or student.get("student_id") or str(sid)
+                if student else str(sid)
+            )
+
             read_summary = progress.get("summary_viewed", False)
             read_story = progress.get("story_generated", False)
-            
-            # Quiz score logic
+
             quiz_score = 0
             if progress.get("quiz_taken"):
                 raw_score = progress.get("quiz_latest_score", 0)
                 quiz_score = raw_score or 0
-                
+
             scores.append(quiz_score)
 
-            # Determine Status
             status = "Needs Attention"
             if quiz_score >= 80:
                 status = "Excellent"

@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     AZURE_OPENAI_CHAT_DEPLOYMENT: str = "gpt-4o-mini"
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT: str = "text-embedding-3-large"
 
+    # Anthropic Claude — used for simulation HTML generation (richer SVG output than gpt-4o-mini)
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_SIMULATION_MODEL: str = "claude-sonnet-4-6"
+
+    # Google Gemini — primary for story (JSON) and simulation (HTML/SVG) generation
+    GOOGLE_API_KEY: str = ""
+    GEMINI_STORY_MODEL: str = "gemini-3.0-flash"
+    GEMINI_SIMULATION_MODEL: str = "gemini-3.0-pro"
+
     # Azure AI Speech Service — STT (Speech-to-Text)
     AZURE_SPEECH_KEY: str = ""
     AZURE_SPEECH_REGION: str = ""

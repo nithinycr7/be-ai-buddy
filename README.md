@@ -250,6 +250,44 @@ mongod --dbpath ./data
 python populate_mock_data.py
 ```
 
+### Seeding Curriculum Data
+
+Curriculum chapter gists are stored in the `curriculum_chapters` collection. Use `seed_curriculum.py` to load them.
+
+**Dry run (no DB write — verify parsing first):**
+```bash
+python seed_curriculum.py
+```
+
+**Write to DB:**
+```bash
+python seed_curriculum.py --execute
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--file` | `data/curriculum_class7_ncert.json` | Path to JSON file |
+| `--board` | `NCERT` | Board name (e.g. `NCERT`, `CBSE`, `ICSE`) |
+| `--class` | `7` | Class number |
+| `--execute` | off | Write to DB (default is dry run) |
+
+**Examples for other classes/boards:**
+```bash
+python seed_curriculum.py --file data/curriculum_class6_ncert.json --board NCERT --class 6 --execute
+python seed_curriculum.py --file data/curriculum_class7_cbse.json  --board CBSE  --class 7 --execute
+```
+
+The script is **re-run safe** — existing records are updated (upsert on `chapter_key`), new ones are inserted.
+
+**Data files location:** `data/curriculum_class{N}_{board}.json`
+
+**Collection indexes** (auto-created on app startup via `app/db/indexes.py`):
+- `ux_curriculum_chapter_key` — unique key for upsert safety
+- `ix_curriculum_board_class` — fast dashboard queries
+- `ix_curriculum_lookup` — full `(board, class, subject, chapter_number)` lookup
+
 ## 📊 Progress Tracking Logic
 
 **Completion Calculation**:

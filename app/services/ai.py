@@ -3,7 +3,7 @@ from openai import AzureOpenAI
 
 from app.services.rag import search_cbse
 from ..core.config import settings
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 _client: AzureOpenAI | None = None
 
@@ -16,6 +16,20 @@ def get_client() -> AzureOpenAI:
             api_version="2024-12-01-preview"
         )
     return _client
+
+
+_gemini_client = None
+
+def get_gemini_client():
+    """Lazy singleton for the Google GenAI client. Returns None if no key is configured."""
+    global _gemini_client
+    if _gemini_client is not None:
+        return _gemini_client
+    if not settings.GOOGLE_API_KEY:
+        return None
+    from google import genai
+    _gemini_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+    return _gemini_client
 
 async def summarize(text: str, chunks:str,class_no:int,subject:str) -> str:
     client = get_client()

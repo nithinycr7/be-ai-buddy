@@ -123,69 +123,48 @@ async def list_daily_classes(
 
 
 # ---------- TEST: Generate structured JSON summary from curriculum data ----------
-SUMMARY_PROMPT = """You are a teacher's assistant. Generate a structured revision summary as JSON.
+SUMMARY_PROMPT = """You are creating a revision summary for a Class {class_no} student who attended this class today.
+You have two sources. Blend them into ONE confident voice per concept.
+Never show them as separate competing paragraphs.
 
-STRICT RULES:
-- Use ONLY facts from the provided content. Do NOT invent information.
-- Adapt language for a Class {class_no} student.
-- Return ONLY valid JSON, no markdown, no commentary.
+BLENDING RULES:
+- Use teacher analogies and examples — keep their phrasing
+- Use NCERT for precise facts, formulas, definitions
+- Write ONE explanation per concept that honours both sources naturally
+- If teacher simplified something NCERT states precisely: keep teacher framing, add NCERT precision
+- Never write "teacher said X, NCERT says Y" — student reads ONE clear thing
 
 CLASS LEVEL GUIDE:
-- Class 3-5: Simple everyday words. Max 3 key terms. Max 3 steps. No formulas.
-- Class 6-7: Simple scientific vocabulary. Max 5 key terms. Max 5 steps. Basic formulas.
+- Class 3-5: Simple everyday words. Max 3 key terms. No formulas.
+- Class 6-7: Simple scientific vocabulary. Max 5 key terms. Basic formulas.
 - Class 8-9: Standard terminology. Concise definitions. Include formulas.
 
-REQUIRED JSON FORMAT:
-{{
-  "blocks": [
-    {{
-      "type": "concept",
-      "title": "One-line topic name",
-      "content": "2-3 sentence simple explanation of the core concept"
-    }},
-    {{
-      "type": "terms",
-      "items": [
-        {{ "term": "Word", "meaning": "Simple one-line meaning" }}
-      ]
-    }},
-    {{
-      "type": "steps",
-      "title": "How [process] works",
-      "steps": ["Step 1 description", "Step 2 description", "Step 3 description"]
-    }},
-    {{
-      "type": "analogy",
-      "content": "A memorable real-life comparison to help remember the concept"
-    }}
-  ]
-}}
+REQUIRED BLOCK ORDER:
+1. concept blocks (2-4) — each must have:
+   {{ "type": "concept", "title": "...", "content": "...", "icon": "<1 emoji that represents this concept visually>",
+      "sources": ["teacher", "ncert"] }}
+   sources options: ["teacher","ncert"] if both used | ["ncert"] if teacher didn't cover it | ["teacher"] if not in NCERT
 
-BLOCK TYPES AVAILABLE (use what fits the subject):
-- "concept": Core explanation (REQUIRED, always first)
-- "terms": Key vocabulary table (REQUIRED)
-- "steps": Ordered process/method steps (for Science processes, Math solving methods)
-- "analogy": Memory trick or real-life comparison (REQUIRED, always last)
-- "formula": For Math/Science equations: {{"type":"formula","label":"name","expression":"equation","note":"when to use"}}
-- "fact": Quick facts list: {{"type":"fact","items":["fact 1","fact 2"]}}
-- "timeline": For History/Social: {{"type":"timeline","items":[{{"date":"1857","event":"First War of Independence"}}]}}
-- "rule": For English/Math rules: {{"type":"rule","title":"Rule name","content":"The rule explanation","example":"Example"}}
+2. analogy block — REQUIRED. Create a vivid real-world comparison that makes the concept memorable.
+   If the teacher used one, keep their exact words. Otherwise invent a strong one.
+   {{ "type": "analogy", "content": "..." }}
 
-ALSO REQUIRED — "checkpoint" block (ALWAYS include, after analogy):
-- Exactly 3 quick questions to test if the student understood the summary
-- Questions must ONLY test content from the blocks above (same facts, same terms)
-- Mix of question types: true/false, pick-the-right-word, one-line answer
-- Format:
-  {{"type": "checkpoint", "questions": [
-    {{"q": "Question text?", "options": ["A", "B", "C"], "answer": "B", "hint": "Think about..."}},
-    {{"q": "True or False: ...", "options": ["True", "False"], "answer": "True", "hint": "Remember..."}},
-    {{"q": "Fill: ___ is the green pigment in plants.", "options": ["Chlorophyll", "Glucose", "Oxygen"], "answer": "Chlorophyll", "hint": "It captures..."}}
-  ]}}
+3. formula block — ONLY for Math/Science with an equation:
+   {{ "type": "formula", "label": "The equation", "expression": "...", "note": "..." }}
 
-Return 4-7 blocks total. Always start with "concept", always end with "checkpoint"."""
+4. terms block — key vocabulary, always visible with definition:
+   {{ "type": "terms", "items": [{{ "term": "...", "meaning": "..." }}] }}
+
+OPTIONAL additional types (use only if they genuinely fit):
+- "fact":     {{"type":"fact","items":["..."]}}
+- "timeline": {{"type":"timeline","items":[{{"date":"1857","event":"..."}}]}}
+- "rule":     {{"type":"rule","title":"...","content":"...","example":"..."}}
+- "steps":    {{"type":"steps","title":"...","steps":["...","..."]}}
+
+Return ONLY valid JSON. 4-7 blocks total. NEVER include a checkpoint block. NEVER show NCERT quotes separately."""
 
 
-VALID_BLOCK_TYPES = {"concept", "terms", "steps", "analogy", "formula", "fact", "timeline", "rule", "checkpoint"}
+VALID_BLOCK_TYPES = {"concept", "terms", "steps", "analogy", "formula", "fact", "timeline", "rule"}
 
 
 def _validate_blocks(data: dict) -> list[dict]:
@@ -195,7 +174,7 @@ def _validate_blocks(data: dict) -> list[dict]:
         raise ValueError("No blocks in response")
 
     cleaned = []
-    for b in blocks[:6]:  # Cap at 6 blocks
+    for b in blocks[:10]:  # Cap at 10 blocks (5-8 expected, room for teacher_moment + concept pairs)
         if not isinstance(b, dict) or "type" not in b:
             continue
         if b["type"] not in VALID_BLOCK_TYPES:
@@ -212,51 +191,114 @@ def _validate_blocks(data: dict) -> list[dict]:
 
 @router.post("/daily/test-summary")
 async def test_generate_summary(
-    subject: str = Query(..., description="e.g. Science, Maths, English"),
-    chapter_number: int = Query(1, description="Chapter number"),
+    subject: str = Query(None, description="e.g. Science, Maths, English"),
+    chapter_number: int = Query(1, description="Chapter number (only used when daily_id is not provided)"),
     class_no: int = Query(7, description="Class number"),
     section: str = Query("A"),
+    daily_id: str | None = Query(None, description="If provided, regenerate summary for this doc using its own topic"),
     tenant: str = Depends(get_tenant)
 ):
     """
-    TEST ENDPOINT: Pick a chapter from curriculum_chapters,
-    generate structured JSON summary blocks,
-    and stamp into classes_daily for frontend rendering.
+    Regenerate structured summary blocks for a classes_daily document.
+
+    When daily_id is given: reads topic/subject/class directly from the document
+    and generates from that — no curriculum chapter lookup needed.
+
+    When daily_id is not given: looks up a curriculum chapter by subject +
+    chapter_number and creates a new row for today.
     """
     import json as json_mod
 
     db = await get_db()
+    client = get_client()
+    prompt_tmpl = SUMMARY_PROMPT
 
-    # 1. Fetch curriculum chapter
-    chapter = await db.curriculum_chapters.find_one({
-        "class": class_no,
-        "subject": {"$regex": f"^{subject}$", "$options": "i"},
-        "chapter_number": chapter_number
-    })
+    # ── PATH A: daily_id provided — use the doc's own data ──────────────────
+    if daily_id:
+        if not ObjectId.is_valid(daily_id):
+            raise HTTPException(400, "Invalid daily_id")
+        doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+        if not doc:
+            raise HTTPException(404, f"classes_daily {daily_id} not found")
+
+        topic_list = [t for t in (doc.get("topics") or []) if t]
+        if not topic_list:
+            raise HTTPException(400, "Document has no topics — set topics before regenerating")
+
+        doc_subject  = doc.get("subject", "Science")
+        doc_class_no = doc.get("class_no", 7)
+        topic_str    = ", ".join(topic_list)
+
+        resp = client.chat.completions.create(
+            model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+            messages=[
+                {"role": "system", "content": prompt_tmpl.format(class_no=doc_class_no)},
+                {"role": "user",   "content": f"Class {doc_class_no} {doc_subject} — {topic_str}"}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.3
+        )
+
+        raw = resp.choices[0].message.content
+        try:
+            blocks = _validate_blocks(json_mod.loads(raw))
+        except (json_mod.JSONDecodeError, ValueError) as e:
+            logger.error(f"LLM JSON validation failed: {e}\nRaw: {raw[:500]}")
+            blocks = [{"type": "concept", "title": topic_str, "content": "Summary not available — please try again."}]
+
+        await db.classes_daily.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"summary_blocks": blocks}}  # topics stay unchanged
+        )
+
+        logger.info(f"Regenerated summary for daily_id={daily_id} topic='{topic_str}'")
+        return {
+            "status": "ok",
+            "daily_id": daily_id,
+            "subject": doc_subject,
+            "topic": topic_str,
+            "date": doc.get("date"),
+            "blocks_count": len(blocks),
+            "block_types": [b["type"] for b in blocks]
+        }
+
+    # ── PATH B: no daily_id — look up curriculum chapter and upsert today ───
+    if not subject:
+        raise HTTPException(400, "subject is required when daily_id is not provided")
+
+    SUBJECT_FALLBACKS = {
+        "biology": ["Science"], "physics": ["Science"], "chemistry": ["Science"],
+        "history": ["Social Science"], "geography": ["Social Science"], "civics": ["Social Science"],
+        "math": ["Maths"], "mathematics": ["Maths"],
+    }
+
+    chapter = None
+    for s in [subject] + SUBJECT_FALLBACKS.get(subject.lower(), []):
+        chapter = await db.curriculum_chapters.find_one({
+            "class": class_no,
+            "subject": {"$regex": f"^{s}$", "$options": "i"},
+            "chapter_number": chapter_number
+        })
+        if chapter:
+            break
+
     if not chapter:
         raise HTTPException(404, f"No curriculum found for class {class_no}, {subject}, chapter {chapter_number}")
 
-    # 2. Build textbook content
-    concepts_text = ""
-    for c in chapter.get("concepts", []):
-        concepts_text += f"\n- {c.get('name', '')}: {c.get('explanation', '')}"
-
-    textbook_content = f"""Chapter: {chapter.get('chapter_title', '')}
-Summary: {chapter.get('chapter_summary', '')}
-Key Concepts:{concepts_text}
-Formulas/Rules: {', '.join(str(x) for x in chapter.get('key_formulas_or_rules', []))}
-Activities: {', '.join(str(x) for x in chapter.get('activities_preserved', []))}
-Real World Connections: {', '.join(str(x) for x in chapter.get('real_world_connections', []))}"""
-
-    # 3. Generate structured JSON via LLM
-    client = get_client()
-    prompt = SUMMARY_PROMPT.format(class_no=class_no)
+    concepts_text = "".join(f"\n- {c.get('name','')}: {c.get('explanation','')}" for c in chapter.get("concepts", []))
+    textbook_content = (
+        f"Chapter: {chapter.get('chapter_title','')}\n"
+        f"Summary: {chapter.get('chapter_summary','')}\n"
+        f"Key Concepts:{concepts_text}\n"
+        f"Formulas/Rules: {', '.join(str(x) for x in chapter.get('key_formulas_or_rules', []))}\n"
+        f"Real World Connections: {', '.join(str(x) for x in chapter.get('real_world_connections', []))}"
+    )
 
     resp = client.chat.completions.create(
         model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
         messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": f"Class {class_no} {subject} — {chapter.get('chapter_title', '')}\n\n{textbook_content}"}
+            {"role": "system", "content": prompt_tmpl.format(class_no=class_no)},
+            {"role": "user",   "content": f"Class {class_no} {subject} — {chapter.get('chapter_title','')}\n\n{textbook_content}"}
         ],
         response_format={"type": "json_object"},
         temperature=0.3
@@ -264,44 +306,33 @@ Real World Connections: {', '.join(str(x) for x in chapter.get('real_world_conne
 
     raw = resp.choices[0].message.content
     try:
-        data = json_mod.loads(raw)
-        blocks = _validate_blocks(data)
+        blocks = _validate_blocks(json_mod.loads(raw))
     except (json_mod.JSONDecodeError, ValueError) as e:
         logger.error(f"LLM JSON validation failed: {e}\nRaw: {raw[:500]}")
-        # Fallback: minimal blocks from curriculum data
         blocks = [
-            {"type": "concept", "title": chapter.get("chapter_title", subject), "content": chapter.get("chapter_summary", "Summary not available.")},
-            {"type": "terms", "items": [{"term": c.get("name", ""), "meaning": c.get("explanation", "")[:80]} for c in chapter.get("concepts", [])[:5]]},
-            {"type": "analogy", "content": "Review your textbook for more details on this topic."}
+            {"type": "concept", "title": chapter.get("chapter_title", subject), "content": chapter.get("chapter_summary", "")},
+            {"type": "terms",   "items": [{"term": c.get("name",""), "meaning": c.get("explanation","")[:80]} for c in chapter.get("concepts",[])[:5]]},
         ]
 
-    # 4. Upsert into classes_daily
-    today = _today_iso()
     topics = [c.get("name", "") for c in chapter.get("concepts", [])[:3]]
-
+    target_date = _today_iso()
     result = await db.classes_daily.update_one(
-        {"tenant": tenant, "class_no": class_no, "section": section, "subject": chapter.get("subject", subject), "date": today},
-        {"$set": {
-            "tenant": tenant,
-            "class_no": class_no,
-            "section": section,
-            "subject": chapter.get("subject", subject),
-            "date": today,
-            "topics": topics,
-            "summary_blocks": blocks
-        }},
+        {"tenant": tenant, "class_no": class_no, "section": section,
+         "subject": chapter.get("subject", subject), "date": target_date},
+        {"$set": {"tenant": tenant, "class_no": class_no, "section": section,
+                  "subject": chapter.get("subject", subject), "date": target_date,
+                  "topics": topics, "summary_blocks": blocks}},
         upsert=True
     )
+    result_id = str(result.upserted_id) if result.upserted_id else "updated"
 
-    daily_id = str(result.upserted_id) if result.upserted_id else "updated"
-    logger.info(f"Test summary generated for {subject} ch{chapter_number} -> {daily_id}")
-
+    logger.info(f"Created summary for {subject} ch{chapter_number} -> {result_id}")
     return {
         "status": "ok",
-        "daily_id": daily_id,
+        "daily_id": result_id,
         "subject": chapter.get("subject", subject),
         "chapter": chapter.get("chapter_title", ""),
-        "date": today,
+        "date": target_date,
         "blocks_count": len(blocks),
         "block_types": [b["type"] for b in blocks]
     }

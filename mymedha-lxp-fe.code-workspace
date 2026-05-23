@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../mymedha-lxp-fe"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../mymedha-lxp-audio-transcription-service"
+		}
+	],
+	"settings": {}
+}

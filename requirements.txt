@@ -7,6 +7,8 @@ pydantic-settings==2.3.4
 motor==3.7.1
 dnspython==2.7.0
 openai==1.51.2
+anthropic==0.39.0
+google-genai==0.8.0
 azure-cognitiveservices-speech==1.40.0
 numpy==1.26.4 
 tenacity==8.5.0

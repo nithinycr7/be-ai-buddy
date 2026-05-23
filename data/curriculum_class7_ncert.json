@@ -1,0 +1,813 @@
+{
+  "english_gepr1_ch01": {
+    "chapter_title": "The Day the River Spoke",
+    "subject": "English",
+    "learning_objectives": [
+      "Understand the importance of dreams",
+      "Recognize the role of nature in personal growth",
+      "Develop listening and comprehension skills"
+    ],
+    "concepts": [
+      {
+        "concept_id": "eng_ch_1",
+        "name": "Dreams and Aspirations",
+        "description": "Exploring the significance of dreams and the steps to achieve them.",
+        "difficulty": "medium",
+        "key_terms": ["dream", "initiative", "courage"],
+        "examples_from_text": ["Jahnavi's desire to go to school despite her responsibilities."]
+      },
+      {
+        "concept_id": "eng_ch_2",
+        "name": "Nature as a Guide",
+        "description": "Understanding how nature can inspire and guide individuals.",
+        "difficulty": "medium",
+        "key_terms": ["river", "encouragement", "initiative"],
+        "examples_from_text": ["The River encouraging Jahnavi to pursue her education."]
+      }
+    ],
+    "chapter_summary": "In 'The Day the River Spoke', Jahnavi, a bright girl from a coastal village, dreams of going to school. Despite her parents' initial resistance due to her responsibilities at home, the River inspires her to take initiative. With courage, she approaches her father, and ultimately, she is allowed to attend school.",
+    "key_formulas_or_rules": [
+      "Dreams require courage and initiative to be fulfilled.",
+      "Nature can serve as a source of inspiration."
+    ],
+    "real_world_connections": [
+      "The importance of education in personal development.",
+      "How natural elements can influence our decisions and aspirations."
+    ],
+    "exercises_preserved": {
+      "questions": [
+        {"question_number": "1", "question_text": "What was Jahnavi's dream? Was it important to her?", "type": "short answer", "difficulty": "medium"},
+        {"question_number": "2", "question_text": "Do you think the river can help her fulfill her dream?", "type": "short answer", "difficulty": "medium"},
+        {"question_number": "3", "question_text": "Complete the table with Jahnavi's questions and River's answers", "type": "table completion", "difficulty": "hard"},
+        {"question_number": "4", "question_text": "Fill blanks with sound words: splashed, shrieked, murmuring, gasped, rattling, wailed", "type": "fill in the blanks", "difficulty": "easy"},
+        {"question_number": "5", "question_text": "Find meanings of borrowed words: karma, sahib, chutney, guru, verandah, jungle", "type": "vocabulary", "difficulty": "medium"},
+        {"question_number": "6", "question_text": "Identify boats: canoe, catamaran, coracle, shikara", "type": "identification", "difficulty": "medium"},
+        {"question_number": "7", "question_text": "Crossword puzzle on water transport", "type": "puzzle", "difficulty": "medium"},
+        {"question_number": "8", "question_text": "Fill prepositions: at/in/on, in/outside/above, through/inside", "type": "fill in the blanks", "difficulty": "easy"},
+        {"question_number": "9", "question_text": "Identify prepositions vs adverbs", "type": "identification", "difficulty": "medium"}
+      ]
+    },
+    "activities_preserved": [
+      {"activity_name": "Sound Observation", "instructions": "Close your eyes and listen to sounds around you. Are they trying to tell you something?", "type": "reflective"},
+      {"activity_name": "Dream Exploration", "instructions": "What is your dream? What can you do to make it come true?", "type": "creative writing"}
+    ]
+  },
+  "english_gepr1_ch02": {
+    "chapter_title": "Wit and Humour",
+    "subject": "English",
+    "learning_objectives": [
+      "Understand the themes of humor and communication in literature.",
+      "Identify different kinds of sentences and their punctuation.",
+      "Differentiate between present continuous and present perfect continuous tenses.",
+      "Explore social manners and appropriate responses.",
+      "Engage in creative expression through humorous plays."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Animal Language", "description": "Understanding how Doctor Dolittle learns to communicate with animals.", "difficulty": "Medium", "key_terms": ["communication", "animal language", "Doctor Dolittle"]},
+      {"concept_id": 2, "name": "Types of Sentences", "description": "Identifying and punctuating different kinds of sentences.", "difficulty": "Easy", "key_terms": ["declarative", "interrogative", "imperative", "exclamatory"]},
+      {"concept_id": 3, "name": "Tenses", "description": "Differentiating between present continuous and present perfect continuous tenses.", "difficulty": "Medium", "key_terms": ["present continuous", "present perfect continuous"]},
+      {"concept_id": 4, "name": "Social Manners", "description": "Understanding proper social responses and manners.", "difficulty": "Easy", "key_terms": ["manners", "social responses", "communication"]},
+      {"concept_id": 5, "name": "Humor in Literature", "description": "Exploring the role of humor in communication and storytelling.", "difficulty": "Medium", "key_terms": ["humor", "literature", "communication"]}
+    ],
+    "chapter_summary": "In this chapter, Doctor Dolittle learns to communicate with animals through the help of Polynesia the parrot. The story emphasizes themes of humor and effective communication. Additionally, Mrs. Shaw teaches her daughter about proper social responses, highlighting the importance of manners in interactions.",
+    "key_formulas_or_rules": [
+      "To form the present continuous tense: Subject + is/am/are + verb+ing.",
+      "To form the present perfect continuous tense: Subject + has/have been + verb+ing."
+    ],
+    "real_world_connections": [
+      "Understanding animal behavior can improve human-animal relationships.",
+      "Effective communication skills are essential in social interactions and professional settings.",
+      "Humor can be a tool for easing awkward situations and building connections."
+    ],
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Identify kinds of sentences and punctuate.", "type": "Writing", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Fill in the blanks about manners.", "type": "Fill in the blanks", "difficulty": "Easy"},
+      {"question_number": 3, "question_text": "Differentiate between present continuous and present perfect continuous.", "type": "Multiple choice", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Create a humorous play about saying the right thing.", "type": "Creative writing", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Observe Animal Body Language", "instructions": "Spend time observing animals and note their body language and behaviors.", "type": "Observation"},
+      {"activity_name": "Discuss Handling Awkward Social Situations", "instructions": "In groups, discuss various awkward social situations and how to handle them effectively.", "type": "Discussion"}
+    ]
+  },
+  "english_gepr1_ch03": {
+    "chapter_title": "My Brother's Great Invention",
+    "subject": "English",
+    "learning_objectives": [
+      "Understand the narrative structure of a story.",
+      "Identify qualities of inventors through character analysis.",
+      "Enhance vocabulary related to inventions and creativity.",
+      "Practice past tense usage in context.",
+      "Encourage curiosity and discussion about inventions."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Narrative Structure", "description": "The way a story is organized, including the introduction, body, and conclusion.", "difficulty": "Medium", "key_terms": ["plot", "characters", "setting"]},
+      {"concept_id": 2, "name": "Inventor Qualities", "description": "Characteristics that define successful inventors, such as curiosity, perseverance, and creativity.", "difficulty": "Easy", "key_terms": ["innovation", "creativity", "problem-solving"]},
+      {"concept_id": 3, "name": "Vocabulary Development", "description": "Expanding language skills through new words related to inventions.", "difficulty": "Medium", "key_terms": ["invention", "technology", "innovation"]},
+      {"concept_id": 4, "name": "Past Tense Usage", "description": "Understanding and applying the past tense in writing and speaking.", "difficulty": "Medium", "key_terms": ["verb tense", "grammar", "sentence structure"]}
+    ],
+    "chapter_summary": "In this chapter, Anita humorously narrates the story of her brother Anand, who showcases his inventive spirit by creating a burglar alarm, a rocket, and a time machine. The narrative highlights themes of curiosity, perseverance, and the importance of innovation.",
+    "key_formulas_or_rules": [
+      "To form the past tense of regular verbs, add -ed to the base form.",
+      "The structure of a narrative includes a clear beginning, middle, and end."
+    ],
+    "real_world_connections": "The chapter encourages students to think about the impact of inventions on daily life and how curiosity and perseverance can lead to significant discoveries.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Arrange the events in the order they occurred.", "type": "ordering", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Identify the qualities of an inventor as demonstrated by Anand.", "type": "short answer", "difficulty": "Easy"},
+      {"question_number": 3, "question_text": "Fill in the blanks with appropriate vocabulary words.", "type": "fill in the blanks", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Convert the following sentences into past tense.", "type": "grammar", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Guess the Invention", "instructions": "Provide clues about various inventions and have students guess what they are.", "type": "group activity"},
+      {"activity_name": "Discuss a World Without Inventions", "instructions": "Engage in a class discussion about how life would be different without certain inventions.", "type": "discussion"}
+    ]
+  },
+  "maths_gegp2_ch01": {
+    "chapter_title": "Symmetry",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand the concept of congruence in figures.",
+      "Identify and apply triangle congruence criteria (SAS, ASA, SSS, RHS).",
+      "Learn to use superimposition to demonstrate congruence.",
+      "Identify corresponding parts of congruent figures.",
+      "Explore the properties of parallel lines and angles."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Congruent Figures", "description": "Figures that have the same shape and size.", "difficulty": "Medium", "key_terms": ["congruence", "figures", "superimposition"]},
+      {"concept_id": 2, "name": "Triangle Congruence", "description": "Criteria for determining when two triangles are congruent: SAS, ASA, SSS, RHS.", "difficulty": "High", "key_terms": ["triangle", "SAS", "ASA", "SSS", "RHS"]},
+      {"concept_id": 3, "name": "Superimposition", "description": "A method to demonstrate congruence by placing one figure over another.", "difficulty": "Medium", "key_terms": ["superimposition", "corresponding parts"]},
+      {"concept_id": 4, "name": "Corresponding Parts", "description": "Parts of congruent figures that match in position and size.", "difficulty": "Medium", "key_terms": ["corresponding vertices", "sides", "angles"]},
+      {"concept_id": 5, "name": "Parallel Lines", "description": "Lines that never meet and are equidistant from each other.", "difficulty": "Medium", "key_terms": ["parallel lines", "angles"]}
+    ],
+    "chapter_summary": "This chapter introduces the concept of symmetry through congruent figures and triangle congruence. It covers the different criteria for triangle congruence, such as SAS, ASA, SSS, and RHS. The chapter emphasizes the importance of superimposition in demonstrating congruence and identifies corresponding parts of congruent figures. Additionally, it explores the properties of parallel lines and angles.",
+    "key_formulas_or_rules": [
+      "SAS (Side-Angle-Side): If two sides and the included angle of one triangle are equal to two sides and the included angle of another triangle, then the triangles are congruent.",
+      "ASA (Angle-Side-Angle): If two angles and the included side of one triangle are equal to two angles and the included side of another triangle, then the triangles are congruent.",
+      "SSS (Side-Side-Side): If all three sides of one triangle are equal to all three sides of another triangle, then the triangles are congruent.",
+      "RHS (Right angle-Hypotenuse-Side): If the hypotenuse and one side of a right triangle are equal to the hypotenuse and one side of another right triangle, then the triangles are congruent."
+    ],
+    "real_world_connections": [
+      "Architecture: Understanding symmetry and congruence is crucial in designing buildings and structures.",
+      "Art: Artists often use symmetry to create visually appealing works.",
+      "Engineering: Congruent shapes are used in various engineering designs and components."
+    ],
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Triangle AIR congruent to FLY - identify corresponding parts", "type": "Identification", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Identify congruent pairs with reason", "type": "Identification", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Show AB parallel to CD given OB=OC, OA=OD", "type": "Proof", "difficulty": "High"},
+      {"question_number": 4, "question_text": "ABCD square show triangle ABC congruent to ADC", "type": "Proof", "difficulty": "High"},
+      {"question_number": 5, "question_text": "Find angles B,C with A as circle center angle 120", "type": "Calculation", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Find missing angles with equal segments", "type": "Calculation", "difficulty": "Medium"}
+    ],
+    "activities_preserved": []
+  },
+  "maths_gegp1_ch02": {
+    "chapter_title": "Arithmetic Expressions",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand the concept of arithmetic expressions.",
+      "Apply the BODMAS rule to solve expressions.",
+      "Compare different arithmetic expressions.",
+      "Use brackets effectively in multi-operation expressions.",
+      "Evaluate complex expressions accurately."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Simple Expressions", "description": "Basic mathematical expressions that involve numbers and operations.", "difficulty": "Easy", "key_terms": ["expression", "operation"]},
+      {"concept_id": 2, "name": "BODMAS Order of Operations", "description": "A rule that dictates the order in which operations should be performed in an expression.", "difficulty": "Medium", "key_terms": ["BODMAS", "order of operations"]},
+      {"concept_id": 3, "name": "Comparing Expressions", "description": "Techniques to determine the relationship between two expressions using symbols like <, >, and =.", "difficulty": "Medium", "key_terms": ["compare", "inequality"]},
+      {"concept_id": 4, "name": "Brackets Usage", "description": "Understanding how to use brackets to alter the order of operations in expressions.", "difficulty": "Medium", "key_terms": ["brackets", "parentheses"]},
+      {"concept_id": 5, "name": "Multi-operation Expressions", "description": "Expressions that involve more than one operation and require careful evaluation.", "difficulty": "Hard", "key_terms": ["multi-operation", "evaluation"]}
+    ],
+    "chapter_summary": "This chapter introduces students to arithmetic expressions, emphasizing the importance of the BODMAS rule for evaluating expressions correctly. It covers how to compare expressions, the effective use of brackets, and the evaluation of complex expressions involving multiple operations.",
+    "key_formulas_or_rules": ["BODMAS: Brackets, Orders (i.e., powers and square roots, etc.), Division and Multiplication (left to right), Addition and Subtraction (left to right)."],
+    "real_world_connections": "Arithmetic expressions are used in various real-life situations such as budgeting, calculating distances, and determining quantities in recipes.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Write expressions for situations (mango supply 7x(9+11), Binu savings, snail climbing)", "type": "Open-ended", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Fill blanks to make expressions equal", "type": "Fill in the blanks", "difficulty": "Easy"},
+      {"question_number": 3, "question_text": "Compare expressions using < > =", "type": "Multiple choice", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Evaluate complex expressions with brackets", "type": "Calculation", "difficulty": "Hard"},
+      {"question_number": 5, "question_text": "Place brackets to get target values", "type": "Problem-solving", "difficulty": "Hard"}
+    ],
+    "activities_preserved": []
+  },
+  "maths_gegp1_ch03": {
+    "chapter_title": "Number Play",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand and identify number patterns and palindromic numbers.",
+      "Apply divisibility rules for various numbers.",
+      "Solve puzzles involving digit sums and magic squares.",
+      "Explore Kaprekar's routine and its significance.",
+      "Engage in creative activities related to number patterns."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Number Patterns", "description": "Sequences of numbers that follow a specific rule or pattern.", "difficulty": "Medium", "key_terms": ["sequence", "pattern", "increment"]},
+      {"concept_id": 2, "name": "Palindromes", "description": "Numbers that read the same forwards and backwards.", "difficulty": "Easy", "key_terms": ["palindrome", "symmetry", "digit"]},
+      {"concept_id": 3, "name": "Divisibility Rules", "description": "Rules that help determine if one number is divisible by another without performing division.", "difficulty": "Medium", "key_terms": ["divisibility", "factors", "multiples"]},
+      {"concept_id": 4, "name": "Magic Squares", "description": "Square grids filled with numbers where the sums of each row, column, and diagonal are the same.", "difficulty": "Hard", "key_terms": ["magic square", "sum", "grid"]},
+      {"concept_id": 5, "name": "Kaprekar's Routine", "description": "A process involving the rearrangement of digits of a number to reach a constant value.", "difficulty": "Medium", "key_terms": ["Kaprekar's constant", "6174", "routine"]}
+    ],
+    "chapter_summary": "This chapter explores various intriguing aspects of numbers, including patterns, palindromes, and rules of divisibility. Students will engage with number puzzles, learn about magic squares, and discover the fascinating Kaprekar's routine. Through exercises and activities, learners will enhance their mathematical thinking and problem-solving skills.",
+    "key_formulas_or_rules": [
+      "A number is palindromic if it remains the same when reversed.",
+      "Divisibility rules for 2: last digit is even; for 3: sum of digits is divisible by 3; for 5: last digit is 0 or 5; for 9: sum of digits is divisible by 9; for 11: difference between the sum of digits in odd positions and even positions is 0 or divisible by 11."
+    ],
+    "real_world_connections": "Understanding number patterns and divisibility can help in various fields such as coding, cryptography, and even in everyday tasks like budgeting and scheduling. Magic squares have historical significance in art and culture, while Kaprekar's routine showcases the beauty of number manipulation.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Find palindromic numbers in range.", "type": "Practical", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Check divisibility rules for 2, 3, 4, 5, 9, 11.", "type": "Theoretical", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Fill magic squares.", "type": "Practical", "difficulty": "Hard"},
+      {"question_number": 4, "question_text": "Kaprekar routine for 4-digit numbers.", "type": "Practical", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Digit sum puzzles.", "type": "Puzzle", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Number pattern completion.", "type": "Practical", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Explore Kaprekar constant 6174", "instructions": "Investigate the process of reaching the Kaprekar constant using various 4-digit numbers.", "type": "Exploratory"},
+      {"activity_name": "Create magic squares", "instructions": "Design your own magic square and verify that the sums are equal in all directions.", "type": "Creative"}
+    ]
+  },
+  "maths_gegp1_ch04": {
+    "chapter_title": "Data Handling and Presentation",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand the process of data collection and organization.",
+      "Learn to create and interpret frequency tables and various types of graphs.",
+      "Calculate the mean of a dataset and understand its significance.",
+      "Develop skills to compare data using visual representations.",
+      "Interpret and analyze data presented in different formats."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Data Collection", "description": "The process of gathering information for analysis.", "difficulty": "Easy", "key_terms": ["data", "collection", "information"]},
+      {"concept_id": 2, "name": "Frequency Tables", "description": "A table that displays the frequency of various outcomes in a dataset.", "difficulty": "Medium", "key_terms": ["frequency", "table", "data organization"]},
+      {"concept_id": 3, "name": "Graphs", "description": "Visual representations of data, including bar graphs, double bar graphs, and pictographs.", "difficulty": "Medium", "key_terms": ["bar graph", "double bar graph", "pictograph"]},
+      {"concept_id": 4, "name": "Mean/Average", "description": "A measure of central tendency calculated by dividing the sum of values by the number of values.", "difficulty": "Medium", "key_terms": ["mean", "average", "central tendency"]},
+      {"concept_id": 5, "name": "Data Interpretation", "description": "The process of making sense of collected data and drawing conclusions.", "difficulty": "Hard", "key_terms": ["interpretation", "analysis", "conclusion"]}
+    ],
+    "chapter_summary": "This chapter covers the essential techniques for handling and presenting data. It includes methods for data collection, organization into frequency tables, and the creation of various graphs such as bar graphs and pictographs. Students will learn to calculate the mean of datasets and interpret data effectively.",
+    "key_formulas_or_rules": [
+      "Mean = (Sum of all values) / (Number of values)",
+      "Frequency = Number of times a value occurs in a dataset"
+    ],
+    "real_world_connections": "Data handling is crucial in various fields such as business, healthcare, and social sciences. Understanding how to collect, analyze, and present data helps in making informed decisions based on statistical evidence.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Create frequency table from raw data", "type": "Practical", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Draw bar graphs for given data", "type": "Practical", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Interpret double bar graphs", "type": "Analytical", "difficulty": "Hard"},
+      {"question_number": 4, "question_text": "Calculate mean of datasets", "type": "Computational", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Create pictograph with scale", "type": "Practical", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Compare data using graphs", "type": "Analytical", "difficulty": "Hard"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Collect and Organize Class Data", "instructions": "Gather data from your classmates on a specific topic and organize it into a frequency table.", "type": "Group Activity"},
+      {"activity_name": "Survey and Present Findings", "instructions": "Conduct a survey on a chosen topic, analyze the data, and present your findings using graphs.", "type": "Group Activity"}
+    ]
+  },
+  "maths_gegp1_ch05": {
+    "chapter_title": "Prime Time",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand the difference between prime and composite numbers.",
+      "Learn how to perform prime factorization using factor trees.",
+      "Calculate the Highest Common Factor (HCF) and Least Common Multiple (LCM).",
+      "Explore the Sieve of Eratosthenes method for finding prime numbers.",
+      "Identify co-prime numbers and twin primes."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Prime Numbers", "description": "Numbers greater than 1 that have no divisors other than 1 and themselves.", "difficulty": "Easy", "key_terms": ["prime", "divisor"]},
+      {"concept_id": 2, "name": "Composite Numbers", "description": "Numbers greater than 1 that have more than two divisors.", "difficulty": "Easy", "key_terms": ["composite", "divisor"]},
+      {"concept_id": 3, "name": "Prime Factorization", "description": "Expressing a number as a product of its prime factors.", "difficulty": "Medium", "key_terms": ["factorization", "prime factors"]},
+      {"concept_id": 4, "name": "HCF and LCM", "description": "HCF is the highest number that divides two or more numbers, while LCM is the lowest number that is a multiple of two or more numbers.", "difficulty": "Medium", "key_terms": ["HCF", "LCM", "multiple", "divisor"]},
+      {"concept_id": 5, "name": "Sieve of Eratosthenes", "description": "An ancient algorithm to find all prime numbers up to a specified integer.", "difficulty": "Medium", "key_terms": ["sieve", "prime numbers"]},
+      {"concept_id": 6, "name": "Co-prime Numbers", "description": "Two numbers that have no common factors other than 1.", "difficulty": "Medium", "key_terms": ["co-prime", "factors"]},
+      {"concept_id": 7, "name": "Twin Primes", "description": "Pairs of prime numbers that have a difference of two.", "difficulty": "Medium", "key_terms": ["twin primes", "prime numbers"]}
+    ],
+    "chapter_summary": "This chapter introduces students to the concepts of prime and composite numbers, prime factorization, and methods to find HCF and LCM. It covers the Sieve of Eratosthenes for identifying prime numbers and discusses co-prime and twin primes, enhancing students' understanding of number theory.",
+    "key_formulas_or_rules": ["HCF = Highest Common Factor", "LCM = Least Common Multiple", "Prime Factorization: n = p1^a1 * p2^a2 * ... * pk^ak"],
+    "real_world_connections": "Understanding prime and composite numbers is essential in various fields such as cryptography, computer science, and number theory, which have applications in security, data encoding, and algorithms.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Identify prime/composite numbers.", "type": "Identification", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Prime factorization using factor trees.", "type": "Calculation", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Find HCF and LCM.", "type": "Calculation", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Sieve of Eratosthenes up to 100.", "type": "Algorithmic", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Find co-prime pairs.", "type": "Identification", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Word problems using HCF/LCM.", "type": "Application", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Build factor trees", "instructions": "Create factor trees for the following numbers: 60, 72, and 100.", "type": "Hands-on"},
+      {"activity_name": "Explore prime number patterns", "instructions": "Investigate and document patterns in prime numbers up to 50.", "type": "Research"},
+      {"activity_name": "Sieve of Eratosthenes activity", "instructions": "Use the Sieve of Eratosthenes method to find all prime numbers up to 100 on a chart.", "type": "Hands-on"}
+    ]
+  },
+  "maths_gegp1_ch06": {
+    "chapter_title": "Perimeter and Area",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand the concept of perimeter and area for various geometric shapes.",
+      "Calculate the perimeter of rectangles, squares, and triangles.",
+      "Determine the area of rectangles, squares, parallelograms, and triangles.",
+      "Convert between different units of measurement.",
+      "Solve problems involving composite figures and real-world applications."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Perimeter of Shapes", "description": "Understanding how to calculate the perimeter of different geometric shapes including rectangles, squares, and triangles.", "difficulty": "Medium", "key_terms": ["perimeter", "rectangle", "square", "triangle"]},
+      {"concept_id": 2, "name": "Area of Shapes", "description": "Learning to calculate the area of rectangles, squares, parallelograms, and triangles.", "difficulty": "Medium", "key_terms": ["area", "rectangle", "square", "parallelogram", "triangle"]},
+      {"concept_id": 3, "name": "Unit Conversion", "description": "Converting between different units of measurement for area and perimeter.", "difficulty": "Easy", "key_terms": ["unit conversion", "square units", "linear units"]},
+      {"concept_id": 4, "name": "Composite Figures", "description": "Calculating the area of composite figures formed by combining different shapes.", "difficulty": "Hard", "key_terms": ["composite figures", "area calculation"]}
+    ],
+    "chapter_summary": "This chapter covers the fundamental concepts of perimeter and area for various geometric shapes including rectangles, squares, triangles, and parallelograms. It also introduces unit conversions and the calculation of areas for composite figures, providing practical applications through real-world problems.",
+    "key_formulas_or_rules": {"perimeter_rectangle": "P = 2(l + b)", "perimeter_square": "P = 4a", "perimeter_triangle": "P = a + b + c", "area_rectangle": "A = l x b", "area_square": "A = a^2", "area_parallelogram": "A = b x h", "area_triangle": "A = 1/2 x b x h"},
+    "real_world_connections": ["Calculating the amount of fencing needed for a garden.", "Determining the area of flooring required for a room.", "Estimating paint needed for a wall based on its area."],
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Find perimeter of given shapes", "type": "Calculation", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Calculate area of rectangles and squares", "type": "Calculation", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Area of parallelograms and triangles", "type": "Calculation", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Word problems on fencing, flooring, painting", "type": "Application", "difficulty": "Hard"},
+      {"question_number": 5, "question_text": "Composite figure area calculations", "type": "Calculation", "difficulty": "Hard"},
+      {"question_number": 6, "question_text": "Unit conversion problems", "type": "Calculation", "difficulty": "Easy"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Measure classroom perimeter", "instructions": "Use a measuring tape to find the perimeter of the classroom and record your findings.", "type": "Practical"},
+      {"activity_name": "Estimate area using grid paper", "instructions": "Draw a shape on grid paper and estimate its area by counting the squares.", "type": "Practical"},
+      {"activity_name": "Design garden layout with given area", "instructions": "Create a layout for a garden that fits within a specified area using different shapes.", "type": "Creative"}
+    ]
+  },
+  "maths_gegp1_ch07": {
+    "chapter_title": "Fractions",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand the difference between proper and improper fractions.",
+      "Learn to convert between mixed numbers and improper fractions.",
+      "Identify and find equivalent fractions.",
+      "Perform addition, subtraction, multiplication, and division of fractions.",
+      "Compare and order fractions effectively."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Proper and Improper Fractions", "description": "Proper fractions have numerators smaller than denominators, while improper fractions have numerators larger than or equal to denominators.", "difficulty": "Easy", "key_terms": ["proper fraction", "improper fraction"]},
+      {"concept_id": 2, "name": "Mixed Numbers", "description": "A mixed number consists of a whole number and a proper fraction.", "difficulty": "Medium", "key_terms": ["mixed number"]},
+      {"concept_id": 3, "name": "Equivalent Fractions", "description": "Fractions that represent the same value, even if they have different numerators and denominators.", "difficulty": "Medium", "key_terms": ["equivalent fractions"]},
+      {"concept_id": 4, "name": "Operations on Fractions", "description": "Includes addition, subtraction, multiplication, and division of fractions, as well as finding reciprocals.", "difficulty": "Hard", "key_terms": ["addition", "subtraction", "multiplication", "division", "reciprocal"]},
+      {"concept_id": 5, "name": "Comparing Fractions", "description": "The process of determining which of two fractions is larger or smaller.", "difficulty": "Medium", "key_terms": ["comparing fractions", "ordering fractions"]}
+    ],
+    "chapter_summary": "This chapter covers the fundamental concepts of fractions, including proper and improper fractions, mixed numbers, and equivalent fractions. It also delves into operations involving fractions such as addition, subtraction, multiplication, and division, as well as comparing and ordering fractions.",
+    "key_formulas_or_rules": [
+      "To convert a mixed number to an improper fraction: (whole number x denominator) + numerator / denominator.",
+      "To find equivalent fractions: Multiply or divide both the numerator and denominator by the same non-zero number.",
+      "For addition/subtraction of fractions: Find a common denominator before performing the operation."
+    ],
+    "real_world_connections": "Fractions are used in various real-life situations such as cooking (measuring ingredients), construction (measuring lengths), and finance (calculating discounts).",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Convert between mixed numbers and improper fractions.", "type": "conversion", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Find equivalent fractions.", "type": "finding equivalent fractions", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Compare and order fractions.", "type": "comparison", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Add and subtract fractions with unlike denominators.", "type": "addition/subtraction", "difficulty": "Hard"},
+      {"question_number": 5, "question_text": "Multiply fractions.", "type": "multiplication", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Divide fractions, find reciprocals.", "type": "division", "difficulty": "Hard"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Fraction Strips Activity", "instructions": "Create strips of paper representing different fractions and use them to visualize equivalent fractions.", "type": "hands-on"},
+      {"activity_name": "Fraction Wall Exploration", "instructions": "Build a fraction wall using colored paper to show different fractions and their equivalents.", "type": "visual"},
+      {"activity_name": "Real-life Fraction Problems", "instructions": "Solve problems involving fractions that relate to everyday situations, such as cooking or shopping.", "type": "application"}
+    ]
+  },
+  "maths_gegp1_ch08": {
+    "chapter_title": "Playing with Constructions",
+    "subject": "Maths",
+    "learning_objectives": [
+      "Understand the basic tools of geometric constructions using ruler and compass.",
+      "Learn to construct various angles and bisect them accurately.",
+      "Master the construction of perpendicular bisectors and triangles based on different criteria.",
+      "Develop skills to construct parallel lines and understand their properties.",
+      "Apply geometric constructions to solve problems and create geometric patterns."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Geometric Constructions", "description": "The process of drawing shapes, angles, and lines accurately using a ruler and compass.", "difficulty": "Medium", "key_terms": ["ruler", "compass", "construction"]},
+      {"concept_id": 2, "name": "Angle Construction", "description": "Techniques to construct specific angles such as 60, 90, and 120 degrees.", "difficulty": "Easy", "key_terms": ["angle", "construction", "degrees"]},
+      {"concept_id": 3, "name": "Angle Bisector", "description": "The method of dividing an angle into two equal parts.", "difficulty": "Medium", "key_terms": ["bisector", "angle", "equal parts"]},
+      {"concept_id": 4, "name": "Perpendicular Bisector", "description": "A line that divides another line segment into two equal parts at 90 degrees.", "difficulty": "Medium", "key_terms": ["perpendicular", "bisector", "line segment"]},
+      {"concept_id": 5, "name": "Triangle Construction", "description": "Constructing triangles based on given criteria such as SSS, SAS, and ASA.", "difficulty": "Hard", "key_terms": ["triangle", "SSS", "SAS", "ASA"]},
+      {"concept_id": 6, "name": "Parallel Lines", "description": "Constructing lines that are equidistant from each other and never meet.", "difficulty": "Medium", "key_terms": ["parallel", "lines", "construction"]}
+    ],
+    "chapter_summary": "This chapter covers the fundamental techniques of geometric constructions using a ruler and compass. Students will learn how to construct specific angles, bisect angles, create perpendicular bisectors, and construct triangles based on various criteria. Additionally, the chapter explores the construction of parallel lines and emphasizes the application of these techniques in solving geometric problems and creating artistic patterns.",
+    "key_formulas_or_rules": [
+      "To bisect an angle, draw arcs from the angle's vertex and mark the intersection points on the angle's arms.",
+      "The perpendicular bisector of a line segment is constructed by finding the midpoint and drawing a line at 90 degrees.",
+      "Triangles can be constructed using the SSS, SAS, or ASA criteria by ensuring the specified sides or angles are accurately represented."
+    ],
+    "real_world_connections": "Geometric constructions are essential in fields such as architecture, engineering, and art. Understanding these concepts allows for precise designs and the creation of aesthetically pleasing geometric patterns.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Construct angles of 60, 90, 120 degrees", "type": "Construction", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Bisect given angles", "type": "Construction", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Construct perpendicular bisector", "type": "Construction", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Construct triangles given SSS/SAS/ASA", "type": "Construction", "difficulty": "Hard"},
+      {"question_number": 5, "question_text": "Construct parallel lines through a point", "type": "Construction", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Construction-based proofs", "type": "Proof", "difficulty": "Hard"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Construct Equilateral Triangle", "instructions": "Using a ruler and compass, construct an equilateral triangle with a given side length.", "type": "Hands-on"},
+      {"activity_name": "Create Geometric Patterns", "instructions": "Use various geometric constructions to create intricate patterns on paper.", "type": "Creative"}
+    ]
+  },
+  "science_gecu1_ch01": {
+    "chapter_title": "Nutrition in Plants",
+    "subject": "Science",
+    "learning_objectives": [
+      "Understand the process of photosynthesis and its significance.",
+      "Differentiate between autotrophs and heterotrophs.",
+      "Explore the role of chlorophyll in photosynthesis.",
+      "Identify various types of plants based on their nutritional habits.",
+      "Explain the concept of symbiosis with examples."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Photosynthesis", "description": "The process by which green plants use sunlight to synthesize foods from carbon dioxide and water.", "difficulty": "Medium", "key_terms": ["chlorophyll", "light energy", "glucose"]},
+      {"concept_id": 2, "name": "Autotrophs and Heterotrophs", "description": "Autotrophs are organisms that produce their own food, while heterotrophs are organisms that consume other organisms for nutrition.", "difficulty": "Easy", "key_terms": ["autotrophs", "heterotrophs"]},
+      {"concept_id": 3, "name": "Role of Chlorophyll", "description": "Chlorophyll is the green pigment in plants that absorbs light energy for photosynthesis.", "difficulty": "Medium", "key_terms": ["chlorophyll", "light absorption"]},
+      {"concept_id": 4, "name": "Insectivorous Plants", "description": "Plants that derive some or most of their nutrients from trapping and consuming insects.", "difficulty": "Hard", "key_terms": ["insectivorous", "nutrition"]},
+      {"concept_id": 5, "name": "Symbiosis", "description": "A close and long-term interaction between two different biological species, such as lichens and legumes with Rhizobium.", "difficulty": "Medium", "key_terms": ["symbiosis", "lichens", "Rhizobium"]}
+    ],
+    "chapter_summary": "This chapter explores the various nutritional modes of plants, focusing on photosynthesis as the primary method by which autotrophs synthesize their food. It explains the role of chlorophyll in capturing light energy, differentiates between autotrophic and heterotrophic organisms, and discusses unique nutritional adaptations in plants such as insectivorous and parasitic plants. The chapter also highlights the importance of symbiotic relationships in nature.",
+    "key_formulas_or_rules": {"photosynthesis_equation": "6CO2 + 6H2O + light energy -> C6H12O6 + 6O2"},
+    "real_world_connections": "Understanding plant nutrition is crucial for agriculture, horticulture, and environmental science, as it helps in improving crop yields and maintaining ecological balance.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "What is photosynthesis? Write equation.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Explain role of chlorophyll.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "How do insectivorous plants get nutrition?", "type": "Short Answer", "difficulty": "Hard"},
+      {"question_number": 4, "question_text": "Differentiate autotrophs and heterotrophs.", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 5, "question_text": "Explain symbiotic relationship in lichens.", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Test leaf for starch using iodine", "instructions": "Take a green leaf, boil it in water, immerse it in alcohol, and then test it with iodine solution to observe the presence of starch.", "type": "Practical"},
+      {"activity_name": "Observe stomata under microscope", "instructions": "Prepare a leaf peel and observe it under a microscope to identify and study the stomata.", "type": "Practical"},
+      {"activity_name": "Grow plants in different nutrient conditions", "instructions": "Plant seeds in different soil types with varying nutrients and observe their growth over time.", "type": "Experimental"}
+    ]
+  },
+  "science_gecu1_ch02": {
+    "chapter_title": "Nutrition in Animals",
+    "subject": "Science",
+    "learning_objectives": [
+      "Understand the structure and function of the human digestive system.",
+      "Learn about the process of digestion and the role of enzymes.",
+      "Explore the unique digestion process in ruminants.",
+      "Examine how single-celled organisms like Amoeba obtain nutrition.",
+      "Differentiate between absorption and assimilation in the digestive process."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Human Digestive System", "description": "Study of the various parts of the human digestive system including mouth, oesophagus, stomach, small intestine, and large intestine.", "difficulty": "Medium", "key_terms": ["mouth", "oesophagus", "stomach", "small intestine", "large intestine"]},
+      {"concept_id": 2, "name": "Role of Enzymes", "description": "Understanding how enzymes like saliva and hydrochloric acid (HCl) aid in the digestion process.", "difficulty": "Medium", "key_terms": ["enzymes", "saliva", "HCl"]},
+      {"concept_id": 3, "name": "Digestion in Ruminants", "description": "Exploration of how ruminants digest cellulose through cud chewing.", "difficulty": "Hard", "key_terms": ["ruminants", "cud", "cellulose"]},
+      {"concept_id": 4, "name": "Amoeba Feeding", "description": "Overview of how Amoeba feeds and digests food through phagocytosis.", "difficulty": "Medium", "key_terms": ["Amoeba", "phagocytosis", "feeding"]},
+      {"concept_id": 5, "name": "Absorption vs Assimilation", "description": "Differentiating between the processes of absorption and assimilation in the digestive system.", "difficulty": "Medium", "key_terms": ["absorption", "assimilation"]}
+    ],
+    "chapter_summary": "This chapter covers the human digestive system, detailing the roles of various organs and enzymes in digestion. It also discusses the unique digestive process in ruminants, highlighting how they manage to digest cellulose. Additionally, the chapter explores how single-celled organisms like Amoeba obtain and process their food, and clarifies the difference between absorption and assimilation.",
+    "key_formulas_or_rules": [],
+    "real_world_connections": "Understanding the human digestive system is crucial for maintaining health and nutrition. Knowledge of digestion in ruminants can inform agricultural practices, while studying Amoeba feeding can enhance our understanding of cellular processes.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Name parts of human digestive system", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Explain role of saliva and HCl", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "How do ruminants digest cellulose?", "type": "Short Answer", "difficulty": "Hard"},
+      {"question_number": 4, "question_text": "Describe digestion in Amoeba", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Differentiate absorption and assimilation", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Model Digestive System", "instructions": "Create a model of the human digestive system using clay and other materials to represent different organs.", "type": "Hands-on"},
+      {"activity_name": "Test Saliva Action on Starch", "instructions": "Conduct an experiment to observe the effect of saliva on starch by mixing saliva with starch solution and testing for glucose.", "type": "Experiment"},
+      {"activity_name": "Observe Amoeba Feeding Under Microscope", "instructions": "Prepare a slide of Amoeba and observe its feeding process under a microscope.", "type": "Observation"}
+    ]
+  },
+  "science_gecu1_ch03": {
+    "chapter_title": "Heat and Temperature",
+    "subject": "Science",
+    "learning_objectives": [
+      "Understand the difference between heat and temperature.",
+      "Learn about different types of thermometers and their uses.",
+      "Explore the three modes of heat transfer: conduction, convection, and radiation.",
+      "Identify conductors and insulators and their properties.",
+      "Explain natural phenomena such as land and sea breezes."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Heat vs Temperature", "description": "Heat is a form of energy that is transferred between systems or objects with different temperatures, while temperature is a measure of the average kinetic energy of the particles in a substance.", "difficulty": "Medium", "key_terms": ["heat", "temperature", "kinetic energy"]},
+      {"concept_id": 2, "name": "Thermometers", "description": "Thermometers are instruments used to measure temperature, with clinical thermometers used for measuring body temperature and laboratory thermometers for various scientific applications.", "difficulty": "Easy", "key_terms": ["clinical thermometer", "laboratory thermometer", "temperature measurement"]},
+      {"concept_id": 3, "name": "Modes of Heat Transfer", "description": "Heat can be transferred in three ways: conduction (direct contact), convection (movement of fluids), and radiation (transfer through electromagnetic waves).", "difficulty": "Medium", "key_terms": ["conduction", "convection", "radiation"]},
+      {"concept_id": 4, "name": "Conductors and Insulators", "description": "Materials that allow heat to pass through them easily are called conductors, while those that do not are called insulators.", "difficulty": "Medium", "key_terms": ["conductors", "insulators", "thermal conductivity"]},
+      {"concept_id": 5, "name": "Land and Sea Breeze", "description": "Land and sea breezes are local winds that occur due to the differential heating of land and water, affecting weather patterns.", "difficulty": "Medium", "key_terms": ["land breeze", "sea breeze", "differential heating"]}
+    ],
+    "chapter_summary": "This chapter explores the fundamental concepts of heat and temperature, differentiating between the two. It discusses various types of thermometers and their applications, and explains the three modes of heat transfer: conduction, convection, and radiation. The chapter also covers the properties of conductors and insulators, and describes the natural phenomena of land and sea breezes.",
+    "key_formulas_or_rules": [],
+    "real_world_connections": "Understanding heat and temperature is essential in daily life, from cooking and heating to weather patterns and climate change. The principles of heat transfer are applied in various fields, including engineering, meteorology, and environmental science.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Differentiate heat and temperature", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Explain clinical thermometer reading", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 3, "question_text": "Three modes of heat transfer with examples", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Why do metals feel colder than wood?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Explain land and sea breeze", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Measure Body Temperature", "instructions": "Use a clinical thermometer to measure your body temperature. Record the reading and discuss if it is within the normal range.", "type": "Practical"},
+      {"activity_name": "Conduction Experiment with Metal Spoon", "instructions": "Place one end of a metal spoon in hot water and touch the other end. Observe and discuss how heat is conducted through the metal.", "type": "Experiment"},
+      {"activity_name": "Convection in Water with Color Drops", "instructions": "Add a few drops of food coloring to a glass of water and observe how the color spreads. Discuss the process of convection.", "type": "Experiment"}
+    ]
+  },
+  "science_gecu1_ch04": {
+    "chapter_title": "Acids, Bases and Salts",
+    "subject": "Science",
+    "learning_objectives": [
+      "Understand the properties and characteristics of acids and bases.",
+      "Learn about indicators and their role in identifying acids and bases.",
+      "Explore the concept of neutralization reactions.",
+      "Understand the pH scale and its significance.",
+      "Identify everyday applications of acids, bases, and salts."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Acids", "description": "Substances that have a sour taste and can donate protons (H+ ions). Examples include hydrochloric acid (HCl) and citric acid.", "difficulty": "Easy", "key_terms": ["sour taste", "HCl", "citric acid"]},
+      {"concept_id": 2, "name": "Bases", "description": "Substances that have a bitter taste and feel slippery or soapy. Examples include sodium hydroxide (NaOH).", "difficulty": "Easy", "key_terms": ["bitter taste", "soapy", "NaOH"]},
+      {"concept_id": 3, "name": "Indicators", "description": "Substances that change color in the presence of an acid or a base. Common indicators include litmus, turmeric, and china rose.", "difficulty": "Medium", "key_terms": ["litmus", "turmeric", "china rose"]},
+      {"concept_id": 4, "name": "Neutralization Reaction", "description": "A chemical reaction between an acid and a base that results in the formation of salt and water.", "difficulty": "Medium", "key_terms": ["neutralization", "salt", "water"]},
+      {"concept_id": 5, "name": "pH Scale", "description": "A scale that measures how acidic or basic a substance is, ranging from 0 to 14.", "difficulty": "Medium", "key_terms": ["pH scale", "acidic", "basic"]},
+      {"concept_id": 6, "name": "Salts", "description": "Compounds formed from the neutralization reaction between an acid and a base.", "difficulty": "Easy", "key_terms": ["salts", "neutralization"]}
+    ],
+    "chapter_summary": "This chapter covers the fundamental concepts of acids, bases, and salts, including their properties, the role of indicators, and the process of neutralization. It introduces the pH scale as a measure of acidity and basicity, and discusses the everyday applications of these substances in daily life.",
+    "key_formulas_or_rules": ["Neutralization Reaction: Acid + Base -> Salt + Water", "pH Scale: 0-7 (Acidic), 7 (Neutral), 7-14 (Basic)"],
+    "real_world_connections": ["Using vinegar (acid) in cooking and baking.", "The role of baking soda (base) in neutralizing stomach acid.", "The use of pH indicators in swimming pools to maintain safe water quality."],
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Classify substances as acid/base/neutral.", "type": "Classification", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "What happens when acid reacts with base?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Explain litmus paper test.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Name natural indicators.", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 5, "question_text": "Give examples of neutralization in daily life.", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Test household substances with litmus", "instructions": "Use litmus paper to test various household substances and determine if they are acidic, basic, or neutral.", "type": "Experiment"},
+      {"activity_name": "Turmeric indicator experiment", "instructions": "Use turmeric powder to test the pH of different solutions and observe the color change.", "type": "Experiment"},
+      {"activity_name": "Neutralization of antacid with acid", "instructions": "Conduct an experiment to observe the neutralization reaction between an antacid and an acid.", "type": "Experiment"}
+    ]
+  },
+  "science_gecu1_ch05": {
+    "chapter_title": "Physical and Chemical Changes",
+    "subject": "Science",
+    "learning_objectives": [
+      "Understand the difference between physical and chemical changes.",
+      "Identify examples of physical and chemical changes in everyday life.",
+      "Explain the process of crystallization.",
+      "Recognize indicators of chemical reactions.",
+      "Discuss methods to prevent rusting."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Physical Changes", "description": "Changes that are reversible and do not form new substances.", "difficulty": "Easy", "key_terms": ["reversible", "no new substance"]},
+      {"concept_id": 2, "name": "Chemical Changes", "description": "Changes that are irreversible and result in the formation of new substances.", "difficulty": "Medium", "key_terms": ["irreversible", "new substance"]},
+      {"concept_id": 3, "name": "Rusting", "description": "A chemical change where iron reacts with oxygen and moisture to form rust.", "difficulty": "Medium", "key_terms": ["rust", "oxidation"]},
+      {"concept_id": 4, "name": "Crystallization", "description": "The process of forming solid crystals from a solution.", "difficulty": "Medium", "key_terms": ["crystals", "solution"]},
+      {"concept_id": 5, "name": "Indicators of Chemical Reactions", "description": "Signs that a chemical change has occurred, such as color change, temperature change, gas production, or precipitate formation.", "difficulty": "Medium", "key_terms": ["indicators", "chemical reactions"]}
+    ],
+    "chapter_summary": "This chapter explores the concepts of physical and chemical changes, highlighting their differences and providing examples. Physical changes are reversible and do not create new substances, while chemical changes are irreversible and result in new substances. The chapter also discusses rusting, crystallization, and indicators of chemical reactions.",
+    "key_formulas_or_rules": ["Rusting: Iron + Oxygen + Moisture -> Rust (Iron Oxide)", "Crystallization: Solute + Solvent -> Crystals"],
+    "real_world_connections": "Understanding physical and chemical changes is essential in everyday life, from cooking and cleaning to industrial processes and environmental science. Knowledge of rusting and crystallization can help in preserving materials and creating products.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Classify changes as physical or chemical.", "type": "Classification", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Why is rusting a chemical change?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Explain the crystallization process.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Give 5 examples each of physical and chemical changes.", "type": "List", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "How to prevent rusting?", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Rusting Experiment", "instructions": "Place iron nails in water, oil, and air to observe the effects of moisture and oxygen on rusting.", "type": "Experiment"},
+      {"activity_name": "Burning Magnesium Ribbon", "instructions": "Burn a magnesium ribbon in air and observe the bright light and white ash produced, indicating a chemical change.", "type": "Experiment"},
+      {"activity_name": "Make Crystals from Sugar Solution", "instructions": "Dissolve sugar in hot water and allow it to cool to form sugar crystals.", "type": "Experiment"}
+    ]
+  },
+  "science_gecu1_ch06": {
+    "chapter_title": "Respiration in Organisms",
+    "subject": "Science",
+    "learning_objectives": [
+      "Understand the difference between aerobic and anaerobic respiration.",
+      "Explain the mechanism of breathing in humans.",
+      "Identify the parts of the human respiratory system.",
+      "Describe how different organisms breathe.",
+      "Analyze the effect of exercise on breathing rate."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Cellular Respiration", "description": "The process by which cells convert glucose and oxygen into energy, carbon dioxide, and water.", "difficulty": "Medium", "key_terms": ["aerobic respiration", "anaerobic respiration"]},
+      {"concept_id": 2, "name": "Breathing Mechanism", "description": "The process of inhaling and exhaling air, involving the diaphragm and other respiratory structures.", "difficulty": "Medium", "key_terms": ["diaphragm", "inhalation", "exhalation"]},
+      {"concept_id": 3, "name": "Human Respiratory System", "description": "The system in humans that facilitates breathing, including nostrils, trachea, lungs, diaphragm, and alveoli.", "difficulty": "Easy", "key_terms": ["nostrils", "trachea", "lungs", "alveoli"]},
+      {"concept_id": 4, "name": "Breathing in Other Animals", "description": "Different mechanisms through which various organisms, such as fish and insects, obtain oxygen.", "difficulty": "Medium", "key_terms": ["gills", "spiracles", "skin"]},
+      {"concept_id": 5, "name": "Breathing Rate and Exercise", "description": "The relationship between physical activity and the rate of breathing in humans and other organisms.", "difficulty": "Medium", "key_terms": ["breathing rate", "exercise", "metabolism"]}
+    ],
+    "chapter_summary": "This chapter explores the process of respiration in organisms, detailing the differences between aerobic and anaerobic respiration, the mechanics of human breathing, and the respiratory systems of various animals. It emphasizes the importance of respiration for energy production and how physical activity influences breathing rates.",
+    "key_formulas_or_rules": [
+      "Aerobic respiration: Glucose + Oxygen -> Carbon Dioxide + Water + Energy",
+      "Anaerobic respiration: Glucose -> Lactic Acid + Energy (in humans) or Ethanol + Carbon Dioxide + Energy (in yeast)"
+    ],
+    "real_world_connections": ["Understanding respiration helps in comprehending how exercise affects our body.", "Knowledge of respiratory systems aids in the study of environmental adaptations in animals.", "Awareness of anaerobic respiration is crucial in fermentation processes in food production."],
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Differentiate aerobic and anaerobic respiration.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Explain mechanism of breathing.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Role of diaphragm.", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 4, "question_text": "How do fish breathe?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Why do we breathe faster during exercise?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Name the parts of human respiratory system.", "type": "Short Answer", "difficulty": "Easy"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Measure Breathing Rate Before/After Exercise", "instructions": "Record your breathing rate before and after performing a physical activity for a set duration.", "type": "Practical"},
+      {"activity_name": "Model Lungs Using Balloons and Bottle", "instructions": "Create a model of human lungs using balloons to demonstrate how the diaphragm works.", "type": "Practical"},
+      {"activity_name": "Observe Yeast Fermentation", "instructions": "Conduct an experiment to observe the process of anaerobic respiration in yeast by measuring gas production.", "type": "Practical"}
+    ]
+  },
+  "social_gees1_ch01": {
+    "chapter_title": "Locating Places on the Earth",
+    "subject": "Social Science",
+    "learning_objectives": [
+      "Understand the concepts of latitude and longitude.",
+      "Identify the significance of the Prime Meridian and the International Date Line.",
+      "Explain the concept of time zones and their importance.",
+      "Learn how to determine Indian Standard Time (IST).",
+      "Use coordinates to locate places on a globe."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Latitude", "description": "The distance of a place north or south of the Equator, measured in degrees.", "difficulty": "Medium", "key_terms": ["Equator", "parallels"]},
+      {"concept_id": 2, "name": "Longitude", "description": "The distance of a place east or west of the Prime Meridian, measured in degrees.", "difficulty": "Medium", "key_terms": ["Prime Meridian", "meridians"]},
+      {"concept_id": 3, "name": "Prime Meridian", "description": "The meridian at 0 degrees longitude, which serves as the starting point for measuring longitude.", "difficulty": "Easy", "key_terms": ["longitude", "International Date Line"]},
+      {"concept_id": 4, "name": "Time Zones", "description": "Regions of the Earth that have the same standard time.", "difficulty": "Medium", "key_terms": ["standard time", "Indian Standard Time"]},
+      {"concept_id": 5, "name": "International Date Line", "description": "An imaginary line that runs from the North Pole to the South Pole and demarcates one calendar day from the next.", "difficulty": "Medium", "key_terms": ["time zones", "Prime Meridian"]}
+    ],
+    "chapter_summary": "This chapter introduces the concepts of latitude and longitude, explaining their significance in locating places on Earth. It covers the Prime Meridian, International Date Line, and the Equator, as well as the Tropic of Cancer, Tropic of Capricorn, and the Arctic and Antarctic circles. The chapter also discusses the importance of time zones and how Indian Standard Time is determined.",
+    "key_formulas_or_rules": ["Latitude is measured in degrees north or south of the Equator.", "Longitude is measured in degrees east or west of the Prime Meridian.", "Each time zone generally represents a difference of one hour."],
+    "real_world_connections": ["Understanding latitude and longitude is essential for navigation and mapping.", "Time zones affect international travel and communication.", "Geographical coordinates are used in GPS technology."],
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "What is the importance of the Prime Meridian?", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Differentiate latitude and longitude.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Why do we need standard time?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Explain time zones concept.", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "How is IST determined?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Locate places using coordinates.", "type": "Practical", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Locate cities on globe using coordinates", "instructions": "Use the given coordinates to find and mark the locations of specified cities on the globe.", "type": "Practical"},
+      {"activity_name": "Calculate time differences between countries", "instructions": "Choose two countries and calculate the time difference based on their respective time zones.", "type": "Practical"}
+    ]
+  },
+  "social_gees1_ch02": {
+    "chapter_title": "Our Changing Earth",
+    "subject": "Social Science",
+    "learning_objectives": [
+      "Understand the concept of lithospheric plates and their movements.",
+      "Explain the processes of earthquakes and volcanoes.",
+      "Differentiate between physical, chemical, and biological weathering.",
+      "Describe the processes of erosion and deposition and their impact on landforms.",
+      "Illustrate the rock cycle and its significance in the Earth's processes."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Lithospheric Plates", "description": "The large, rigid pieces of the Earth's lithosphere that move and interact at their boundaries.", "difficulty": "Medium", "key_terms": ["tectonic plates", "plate boundaries", "continental drift"]},
+      {"concept_id": 2, "name": "Earthquakes", "description": "Sudden shaking of the ground caused by the movement of tectonic plates.", "difficulty": "Medium", "key_terms": ["seismic waves", "epicenter", "magnitude"]},
+      {"concept_id": 3, "name": "Volcanoes", "description": "Openings in the Earth's crust from which molten lava, ash, and gases are ejected.", "difficulty": "Medium", "key_terms": ["magma", "lava", "eruption"]},
+      {"concept_id": 4, "name": "Weathering", "description": "The breakdown of rocks into smaller pieces through physical, chemical, or biological processes.", "difficulty": "Easy", "key_terms": ["physical weathering", "chemical weathering", "biological weathering"]},
+      {"concept_id": 5, "name": "Erosion and Deposition", "description": "Processes that involve the wearing away of the Earth's surface and the transport of sediments to new locations.", "difficulty": "Medium", "key_terms": ["erosion", "deposition", "sediment transport"]},
+      {"concept_id": 6, "name": "Landforms", "description": "Natural features of the Earth's surface created by various geological processes, including rivers, glaciers, wind, and sea waves.", "difficulty": "Medium", "key_terms": ["landforms", "glaciers", "river valleys", "coastlines"]},
+      {"concept_id": 7, "name": "Rock Cycle", "description": "The continuous process of rock formation, breakdown, and reformation through various geological processes.", "difficulty": "Medium", "key_terms": ["igneous", "sedimentary", "metamorphic", "recycling"]}
+    ],
+    "chapter_summary": "This chapter explores the dynamic processes that shape the Earth's surface, including the movement of lithospheric plates, the occurrence of earthquakes and volcanoes, and the effects of weathering, erosion, and deposition. It also discusses various landforms created by these processes and illustrates the rock cycle, highlighting the interconnectedness of geological phenomena.",
+    "key_formulas_or_rules": [],
+    "real_world_connections": "Understanding these geological processes is crucial for disaster preparedness, environmental conservation, and urban planning, as they influence natural landscapes and human activities.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "How do earthquakes occur?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Types of weathering with examples", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 3, "question_text": "Explain river erosion and deposition", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Landforms created by glaciers", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "How do sea waves shape coastlines?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Draw and explain the rock cycle", "type": "Diagram/Explanation", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Model Volcano Experiment", "instructions": "Create a model volcano using baking soda and vinegar to demonstrate an eruption.", "type": "Hands-on Experiment"},
+      {"activity_name": "Observe Erosion in Local Area", "instructions": "Take a field trip to a local area to observe and document signs of erosion.", "type": "Field Study"}
+    ]
+  },
+  "social_gees1_ch03": {
+    "chapter_title": "Exploring Journeys: Trade and Connections",
+    "subject": "Social Science",
+    "learning_objectives": [
+      "Understand the significance of ancient trade routes.",
+      "Analyze the cultural exchanges facilitated by trade.",
+      "Examine the evolution of trade systems from barter to coins.",
+      "Identify key ports and their roles in ancient trade.",
+      "Explore the impact of trade on the spread of religions."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Silk Route", "description": "An ancient network of trade routes that connected the East and West, facilitating the exchange of goods, culture, and ideas.", "difficulty": "Medium", "key_terms": ["trade", "cultural exchange", "East-West connection"]},
+      {"concept_id": 2, "name": "Spice Route", "description": "A maritime route used for the trade of spices and other goods, crucial for connecting Asia with Europe and Africa.", "difficulty": "Medium", "key_terms": ["spices", "maritime trade", "economic exchange"]},
+      {"concept_id": 3, "name": "Cultural Exchanges", "description": "The sharing and blending of cultural practices, ideas, and beliefs that occurred through trade.", "difficulty": "Easy", "key_terms": ["culture", "exchange", "tradition"]},
+      {"concept_id": 4, "name": "Merchant Guilds", "description": "Associations of merchants that regulated trade practices and protected their members' interests in ancient times.", "difficulty": "Medium", "key_terms": ["guild", "trade regulation", "merchant association"]},
+      {"concept_id": 5, "name": "Barter System", "description": "An economic system where goods and services are exchanged directly for other goods and services without using money.", "difficulty": "Easy", "key_terms": ["barter", "exchange", "economics"]}
+    ],
+    "chapter_summary": "This chapter explores the ancient trade routes, including the Silk Route and Spice Route, highlighting their significance in facilitating trade and cultural exchanges. It discusses the evolution of trade practices from the barter system to the use of coins, the role of merchant guilds, and the importance of key ports in the trade networks. Additionally, it examines how trade contributed to the spread of religions and cultural ideas across regions.",
+    "key_formulas_or_rules": [],
+    "real_world_connections": "Understanding ancient trade routes helps us appreciate the historical connections between different cultures and economies, and their influence on modern trade practices and cultural exchanges.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "What was the Silk Route?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "How did trade spread cultural ideas?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Role of Indian Ocean in trade", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Evolution from barter to coins", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Important ancient trade ports of India", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Trace Trade Routes on Map", "instructions": "Using a world map, trace the ancient trade routes discussed in the chapter, including the Silk Route and Spice Route.", "type": "Map Activity"},
+      {"activity_name": "Research Local Trade History", "instructions": "Conduct research on the history of trade in your local area, focusing on key goods traded and the impact on local culture.", "type": "Research Activity"}
+    ]
+  },
+  "social_gees1_ch04": {
+    "chapter_title": "A Closer Look at Settlements",
+    "subject": "Social Science",
+    "learning_objectives": [
+      "Understand the differences between rural and urban settlements.",
+      "Identify factors that influence the location of settlements.",
+      "Explore various types of rural settlement patterns.",
+      "Discuss the causes and effects of urbanization.",
+      "Analyze the challenges faced by urban areas."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Rural vs Urban Settlements", "description": "Understanding the characteristics that differentiate rural and urban areas.", "difficulty": "Medium", "key_terms": ["Rural", "Urban", "Settlement"]},
+      {"concept_id": 2, "name": "Factors Affecting Settlement Location", "description": "Exploring the various factors such as water, climate, and terrain that influence where settlements are established.", "difficulty": "Medium", "key_terms": ["Location", "Climate", "Terrain", "Water"]},
+      {"concept_id": 3, "name": "Types of Rural Settlements", "description": "Examining the different patterns of rural settlements, including compact and dispersed types.", "difficulty": "Medium", "key_terms": ["Compact", "Dispersed", "Rural Settlement"]},
+      {"concept_id": 4, "name": "Urbanization", "description": "Understanding the process of urbanization and its implications for society.", "difficulty": "High", "key_terms": ["Urbanization", "Smart Cities"]},
+      {"concept_id": 5, "name": "Census Data", "description": "Analyzing census data to understand demographic changes in rural and urban areas.", "difficulty": "Medium", "key_terms": ["Census", "Demographics"]}
+    ],
+    "chapter_summary": "This chapter provides an in-depth look at the characteristics and differences between rural and urban settlements. It discusses the various factors that influence the location of these settlements, such as water availability, climate conditions, and terrain features. The chapter also categorizes rural settlements into compact and dispersed types and examines the phenomenon of urbanization, including the development of smart cities. Finally, it highlights the importance of census data in understanding the demographic trends in both rural and urban areas.",
+    "key_formulas_or_rules": [],
+    "real_world_connections": ["Understanding settlement patterns can help in urban planning and resource allocation.", "Knowledge of urbanization trends is crucial for addressing social issues in cities.", "Census data analysis aids in policy-making and development strategies."],
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Differentiate rural and urban settlements", "type": "Descriptive", "difficulty": "Medium"},
+      {"question_number": 2, "question_text": "Factors influencing settlement location", "type": "Descriptive", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "Types of rural settlement patterns", "type": "Descriptive", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Causes of urbanization", "type": "Descriptive", "difficulty": "High"},
+      {"question_number": 5, "question_text": "Problems faced by urban areas", "type": "Descriptive", "difficulty": "High"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Survey your neighborhood settlement pattern", "instructions": "Conduct a survey in your neighborhood to identify the type of settlement pattern present and the characteristics of the area.", "type": "Field Study"},
+      {"activity_name": "Compare census data of rural and urban areas", "instructions": "Gather census data for your local rural and urban areas and compare the demographic information.", "type": "Data Analysis"}
+    ]
+  },
+  "social_gees1_ch05": {
+    "chapter_title": "Global Connections: Trade and Exchange",
+    "subject": "Social Science",
+    "learning_objectives": [
+      "Understand the concept of globalization and its significance.",
+      "Analyze the role of MNCs and WTO in international trade.",
+      "Evaluate the impact of globalization on local economies.",
+      "Discuss the principles of fair trade and its importance.",
+      "Explore the concept of global supply chains and their examples."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Globalization", "description": "The process of increased interconnectedness and interdependence among countries, primarily in terms of trade, culture, and economics.", "difficulty": "Medium", "key_terms": ["interconnectedness", "trade", "economics"]},
+      {"concept_id": 2, "name": "Multinational Corporations (MNCs)", "description": "Companies that operate in multiple countries, influencing global trade and economies.", "difficulty": "Medium", "key_terms": ["MNCs", "global economy", "business"]},
+      {"concept_id": 3, "name": "World Trade Organization (WTO)", "description": "An intergovernmental organization that regulates international trade and ensures that trade flows as smoothly and predictably as possible.", "difficulty": "Medium", "key_terms": ["WTO", "trade regulation", "international trade"]},
+      {"concept_id": 4, "name": "Fair Trade", "description": "A movement aimed at helping producers in developing countries achieve better trading conditions and promote sustainability.", "difficulty": "Medium", "key_terms": ["fair trade", "sustainability", "trade conditions"]},
+      {"concept_id": 5, "name": "Global Supply Chains", "description": "Networks that connect various production and distribution processes across different countries to deliver products to consumers.", "difficulty": "Medium", "key_terms": ["supply chain", "production", "distribution"]}
+    ],
+    "chapter_summary": "This chapter explores the concept of globalization and its impact on trade and exchange. It discusses the roles of multinational corporations and the World Trade Organization in shaping the global economy. The chapter also examines the implications of globalization on local economies, the principles of fair trade, and the structure of global supply chains.",
+    "key_formulas_or_rules": [],
+    "real_world_connections": "Understanding globalization helps students comprehend the interconnected nature of today's economy and the influence of international trade on local markets. It also highlights the importance of ethical trading practices like fair trade.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "What is globalization?", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Role of MNCs in global economy", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "How does WTO regulate trade?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "Impact of globalization on local businesses", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "What is fair trade?", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 6, "question_text": "Explain global supply chains with examples", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Track origin of household products", "instructions": "Choose several household products and research their origins, including the countries they are produced in and the supply chains involved.", "type": "Research Activity"},
+      {"activity_name": "Debate globalization pros and cons", "instructions": "Organize a debate where students discuss the advantages and disadvantages of globalization, presenting arguments for both sides.", "type": "Debate"}
+    ]
+  },
+  "social_gees1_ch06": {
+    "chapter_title": "Understanding Media",
+    "subject": "Social Science",
+    "learning_objectives": [
+      "Understand the different types of media and their characteristics.",
+      "Analyze the role of media in a democratic society.",
+      "Evaluate the influence of advertising and media bias.",
+      "Promote responsible media consumption among peers.",
+      "Differentiate between news and opinion in media."
+    ],
+    "concepts": [
+      {"concept_id": 1, "name": "Types of Media", "description": "Explores various forms of media including print, electronic, and social media.", "difficulty": "Easy", "key_terms": ["Print Media", "Electronic Media", "Social Media"]},
+      {"concept_id": 2, "name": "Role of Media in Democracy", "description": "Discusses how media serves as a watchdog and informs the public in a democratic setup.", "difficulty": "Medium", "key_terms": ["Democracy", "Public Opinion", "Watchdog"]},
+      {"concept_id": 3, "name": "Media and Money", "description": "Examines the relationship between media funding, advertising, and content.", "difficulty": "Medium", "key_terms": ["Advertising", "Funding", "Content Creation"]},
+      {"concept_id": 4, "name": "Censorship and Media Bias", "description": "Analyzes the impact of censorship and bias in media reporting.", "difficulty": "Hard", "key_terms": ["Censorship", "Media Bias", "Objectivity"]},
+      {"concept_id": 5, "name": "Responsible Media Consumption", "description": "Encourages critical thinking and responsible use of media, especially social media.", "difficulty": "Medium", "key_terms": ["Critical Thinking", "Social Media", "Responsible Use"]}
+    ],
+    "chapter_summary": "This chapter delves into the various types of media, their roles in society, particularly in a democracy, and the influence of advertising and media bias. It emphasizes the importance of responsible media consumption and the need for critical evaluation of media content.",
+    "key_formulas_or_rules": [],
+    "real_world_connections": "Understanding media is crucial in today's digital age, where information is abundant and often biased. Recognizing the influence of media on public opinion and decision-making is essential for active citizenship.",
+    "exercises_preserved": [
+      {"question_number": 1, "question_text": "Types of media with examples", "type": "Short Answer", "difficulty": "Easy"},
+      {"question_number": 2, "question_text": "Role of media in democracy", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 3, "question_text": "How does advertising influence us?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 4, "question_text": "What is media bias?", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 5, "question_text": "Responsible use of social media", "type": "Short Answer", "difficulty": "Medium"},
+      {"question_number": 6, "question_text": "Difference between news and opinion", "type": "Short Answer", "difficulty": "Medium"}
+    ],
+    "activities_preserved": [
+      {"activity_name": "Analyze Newspaper Articles for Bias", "instructions": "Select a newspaper article and identify any biases present. Discuss your findings with the class.", "type": "Group Activity"},
+      {"activity_name": "Create a Class Newsletter", "instructions": "Collaboratively create a class newsletter that includes news articles, opinions, and advertisements.", "type": "Group Activity"},
+      {"activity_name": "Compare News Coverage Across Sources", "instructions": "Choose a current event and compare how different news sources report on it. Discuss the differences in coverage.", "type": "Group Activity"}
+    ]
+  }
+}
