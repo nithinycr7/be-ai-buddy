@@ -20,7 +20,16 @@ from app.services.ai import get_gemini_client
 logger = logging.getLogger(__name__)
 
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "engine_prompt.txt"
-SYSTEM_PROMPT = PROMPT_PATH.read_text(encoding="utf-8")
+
+
+def _load_system_prompt() -> str:
+    """Re-read the prompt on each call so edits take effect without a server restart.
+    The cost is a few KB filesystem read per generation — generation itself takes ~5s."""
+    return PROMPT_PATH.read_text(encoding="utf-8")
+
+
+# Kept for any external callers that may still import the symbol.
+SYSTEM_PROMPT = _load_system_prompt()
 
 
 def _build_user_prompt(topic: str, subject: str, grades: List[int], board: str) -> str:
@@ -96,7 +105,7 @@ async def generate_engine_config(
                 model=model_name,
                 contents=user_prompt,
                 config=genai_types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
+                    system_instruction=_load_system_prompt(),
                     temperature=0.2,
                     max_output_tokens=8192,
                     response_mime_type="application/json",

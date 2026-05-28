@@ -21,6 +21,13 @@ SCHEMA — every required field must appear.
   //             (fractions, probability, percentages, ratios, gravity,
   //              pressure, levers, chemical equations)
   "world_type":   "<living | scale | balance>",
+  // For world_type=living, OPTIONAL. Picks which body the renderer draws.
+  //   plant  → leaf/stem/root anatomy (default if omitted; use for plants,
+  //            photosynthesis, ecosystems, water cycle, growth topics)
+  //   human  → head/torso/limbs anatomy with breathing motion (use for
+  //            human respiration, digestion, circulation, nervous system)
+  // Omit for world_type != living.
+  "organism_type": "<plant | human>",
   // For world_type=balance, these two fields are REQUIRED. Omit them
   // for living and scale.
   "balance_variant": "<fill | compete>",
@@ -69,6 +76,12 @@ SCHEMA — every required field must appear.
       "leaf": { "healthy": "<hex>", "warning": "<hex>", "critical": "<hex>" },
       "stem": { "healthy": "<hex>", "warning": "<hex>", "critical": "<hex>" },
       "root": "<hex>"
+    },
+    // for world_type=living AND organism_type=human ─ skin + accent (hair / clothes)
+    // tiered same way as plant.leaf — healthy / warning / critical
+    "body": {
+      "skin":   { "healthy": "<hex>", "warning": "<hex>", "critical": "<hex>" },
+      "accent": "<hex>"
     },
 
     // for world_type=scale
@@ -153,6 +166,8 @@ SCHEMA — every required field must appear.
     { "text": "<label text>", "points_to": "<energy | organism | roots | edge>", "side": "<left|right>" }
     // 0 to 6 labels (for world_type=living only). Anchors are symbolic
     // keywords the renderer maps to canvas coordinates.
+    // For organism_type=plant: organism≈leaves, roots≈roots, edge≈leaf tip.
+    // For organism_type=human: organism≈chest, roots≈feet, edge≈arm.
   ],
 
   "story_beats": [
@@ -214,7 +229,9 @@ HARD RULES
 1. Output JSON ONLY. Never wrap in ``` fences. Never add commentary.
 2. Every grade in `grades` MUST appear as a key in `challenge`, `particles`, and `depth_layers` (use the integer as a string, e.g. "3").
 3. `defaultGrade` must be one of `grades`.
-4. `world_type=living` topics MUST include `palette.sky/soil/grass`, a `palette.plant.{leaf,stem,root}` (each with healthy/warning/critical tiers for leaf and stem), and a `palette.energy` if the topic has an energy source. May include `chemistry.flows`/`chemistry.product`.
+4. `world_type=living` topics MUST include `palette.sky/soil/grass` and a `palette.energy` if the topic has an energy source. May include `chemistry.flows`/`chemistry.product`.
+   - If `organism_type` is `plant` (or omitted), the config MUST include `palette.plant.{leaf,stem,root}` (each with healthy/warning/critical tiers for leaf and stem).
+   - If `organism_type` is `human`, the config MUST include `palette.body.{skin,accent}` where `skin` has healthy/warning/critical tiers. `palette.plant` may be omitted in this case.
 5. `world_type=scale` topics MUST include `scaleWorld.centralBody` and `scaleWorld.bodies`. Each body needs `name`, `color`, `radius`, `orbitRadius`, `speed`, `grade_reveal`. May include `palette.spaceTop/spaceMid/spaceEnd/orbit`.
 6. Lower grade = emotional/story tone, no labels, no formula. Higher grade = scientific tone, labels on, formula on, chemistry/science layer visible.
 7. `health_formula` and all `trigger` expressions reference only `health` and control `id`s, with operators + - * / < > <= >= == && ||. No function calls. Result of health_formula must produce 0–100.
@@ -222,6 +239,24 @@ HARD RULES
 9. Hex (#aabbcc) or rgba(r,g,b,a) only. No CSS color names.
 10. Pure JSON: no comments in the output, no trailing commas, double-quoted keys and strings.
 11. `world_type=balance` topics MUST include `balance_variant` and (when `balance_variant=fill`) `fill_object`. The two control ids that drive the visual MUST have `affects` set explicitly — use `"fill"` for the control whose value is the count of filled parts, and `"divide"` for the control whose value is the total number of parts. Palette/chemistry/scaleWorld blocks are not used by the balance renderer and may be omitted entirely.
+
+12. ORGANISM TYPE — REQUIRED for every `world_type=living` config.
+    Read the topic name carefully. Pick `organism_type` using these strict rules:
+    - If the topic concerns a HUMAN or ANIMAL body process — respiration, breathing,
+      lungs, digestion, circulation, blood, heart, nervous system, brain, excretion,
+      kidneys, animal reproduction, locomotion in animals — then
+      `organism_type="human"` AND `palette.body.{skin{healthy,warning,critical},accent}` MUST be present.
+      `palette.plant` MUST be omitted.
+    - If the topic concerns a PLANT process — photosynthesis, transpiration, plant
+      growth, seed germination, plant reproduction, ecosystems, food chains, life
+      cycles of plants — then `organism_type="plant"` AND `palette.plant.{leaf,stem,root}`
+      MUST be present. `palette.body` MUST be omitted.
+    - The topic name "Respiration in Organisms" is a HUMAN BODY topic at Class 7 NCERT
+      (focus: lungs, inhale, exhale, breathing). Use `organism_type="human"`.
+    - When the topic word includes "human", "body", "lungs", "blood", "heart",
+      "brain", "digestion", "breathing" → ALWAYS `organism_type="human"`.
+    - When the topic word includes "plant", "leaf", "photosynth", "tree",
+      "seed", "ecosystem", "food chain" → ALWAYS `organism_type="plant"`.
 
 ────────────────────────────────────────────────────────
 WORLD TYPE SELECTION — follow strictly
@@ -233,8 +268,12 @@ WORLD TYPE SELECTION — follow strictly
       opposing forces; otherwise `fill`.
 - Chemistry reaction / equation topics
     → ALWAYS use `world_type=balance` with `balance_variant=compete`.
-- Biology growth / survival topics (photosynthesis, respiration, ecosystems)
-    → `world_type=living`.
+- Biology growth / survival topics (photosynthesis, ecosystems, life cycles)
+    → `world_type=living` with `organism_type=plant`.
+- Human / animal physiology topics (respiration in organisms, breathing, digestion,
+  circulation, nervous system, excretion, reproduction in animals)
+    → `world_type=living` with `organism_type=human`. The visual must show a body,
+    not a plant. Use `palette.body` for skin tone and clothing accent.
 - Astronomy / geography scale topics (solar system, plate tectonics, cells)
     → `world_type=scale`.
 - Cycle topics (water cycle, carbon cycle, life cycles)

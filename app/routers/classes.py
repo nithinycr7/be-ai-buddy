@@ -741,3 +741,121 @@ async def generate_story_endpoint(
 
     logger.info(f"[STORY] Saved story for daily_id={req.daily_id} topic='{topic}' in {gen_ms}ms")
     return {"story": story, "from_cache": False, "generated_at": now, "generation_ms": gen_ms}
+
+
+# ---------- Guru-Shishya dialogue story endpoints (parallel format) ----------
+
+class GuruStoryRequest(BaseModel):
+    daily_id:      str
+    student_id:    str
+    grade:         int
+    personality:   str = "curious"
+    force:         bool = False
+    summary_focus: list[str] = []
+
+
+@router.get("/guru-story")
+async def get_existing_guru_story(
+    daily_id:   str,
+    student_id: str,
+):
+    """Check cache for an existing generated Guru-Shishya story. Returns story or null."""
+    db = await get_db()
+    doc = await db.guru_shishya_stories.find_one(
+        {"daily_id": daily_id, "student_id": student_id},
+        {"_id": 0},
+    )
+    if doc:
+        return {
+            "story":        doc["story"],
+            "from_cache":   True,
+            "generated_at": doc.get("generated_at", ""),
+        }
+    return {"story": None, "from_cache": False}
+
+
+@router.post("/guru-story/generate")
+async def generate_guru_story_endpoint(
+    req: GuruStoryRequest,
+    tenant: str = Depends(get_tenant),
+):
+    """Generate (or return cached) Guru-Shishya dialogue story for a daily class."""
+    db = await get_db()
+
+    if not req.force:
+        existing = await db.guru_shishya_stories.find_one(
+            {"daily_id": req.daily_id, "student_id": req.student_id}
+        )
+        if existing:
+            return {"story": existing["story"], "from_cache": True}
+
+    if not ObjectId.is_valid(req.daily_id):
+        raise HTTPException(status_code=400, detail="Invalid daily_id")
+    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id)})
+    if not daily:
+        raise HTTPException(status_code=404, detail="Daily class not found")
+
+    topics = [t for t in (daily.get("topics") or []) if t]
+    if not topics:
+        raise HTTPException(
+            status_code=400,
+            detail="No topics set — ask your teacher to configure today's lesson",
+        )
+
+    topic = ", ".join(topics)
+    subject = daily.get("subject", "Science")
+    class_no = daily.get("class_no", req.grade)
+
+    transcript_doc = await db.transcripts.find_one({"daily_id": req.daily_id})
+    transcript = transcript_doc.get("text", "") if transcript_doc else ""
+
+    ncert_content = ""
+    chapter = await db.curriculum_chapters.find_one({
+        "class": class_no,
+        "subject": {"$regex": f"^{subject}$", "$options": "i"},
+    })
+    if chapter:
+        concepts = "\n".join(
+            f"- {c.get('name','')}: {c.get('explanation','')}"
+            for c in chapter.get("concepts", [])[:6]
+        )
+        ncert_content = (
+            f"Chapter: {chapter.get('chapter_title','')}\n"
+            f"Summary: {chapter.get('chapter_summary','')}\n"
+            f"Concepts:\n{concepts}"
+        )
+
+    from app.services.guru_shishya_service import generate_guru_shishya_story
+    try:
+        story, gen_ms = await generate_guru_shishya_story(
+            topic=topic,
+            subject=subject,
+            grade=class_no,
+            transcript=transcript,
+            ncert_content=ncert_content,
+            personality=req.personality,
+            summary_focus=req.summary_focus,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.guru_shishya_stories.replace_one(
+        {"daily_id": req.daily_id, "student_id": req.student_id},
+        {
+            "daily_id":      req.daily_id,
+            "student_id":    req.student_id,
+            "grade":         class_no,
+            "personality":   req.personality,
+            "story":         story,
+            "generated_at":  now,
+            "generation_ms": gen_ms,
+            "tenant":        tenant,
+        },
+        upsert=True,
+    )
+
+    logger.info(
+        f"[GURU_STORY] Saved story for daily_id={req.daily_id} topic='{topic}' in {gen_ms}ms"
+    )
+    return {"story": story, "from_cache": False, "generated_at": now, "generation_ms": gen_ms}

@@ -1,0 +1,687 @@
+You are generating a Guru-Shishya story for an Indian
+school student who just attended class today.
+
+This is NOT a comic panel format.
+This is NOT a task the student must solve.
+This is a CONVERSATION between two characters
+that the student reads and feels understood by.
+
+The student reads this after school as revision.
+They already attended the class.
+The story is not teaching them from scratch.
+The story is making them REALISE they already
+understood it — they just did not have the word.
+
+═══════════════════════════════════════════════════════
+THE TWO CHARACTERS
+═══════════════════════════════════════════════════════
+
+GURU:
+  A wise, funny, slightly dramatic storyteller.
+  Never lectures. Never explains directly.
+  Always tells a story first.
+  Uses everyday examples from student's own life.
+  Treats science/maths/history like a mischievous
+  character with a personality and habits.
+  Asks WHY before explaining HOW.
+  Makes the student feel the confusion
+  before resolving it.
+
+  Guru's humour comes from:
+    Finding absurdity in everyday situations.
+    Pretending to be shocked by obvious things.
+    Comparing big concepts to small daily moments.
+    Never taking the subject too seriously.
+    Dramatic pauses before revealing the answer.
+
+  Guru NEVER says the concept name
+  until the concept_callout reveal.
+  Guru ALWAYS drives forward with questions.
+  Guru speaks in short punchy lines.
+  Not paragraphs. Not lectures.
+
+SHISHYA:
+  Reflects the student's personality lens.
+  Always one step behind Guru.
+  Says what every student is actually thinking.
+  Makes the wrong assumption first —
+  then realises the truth WITH the reader.
+  Never knows the answer before Guru reveals it.
+
+  Shishya's reactions must feel genuine.
+  Not performative. Not too eager.
+  Not a perfect student.
+  A real student who gets confused,
+  guesses wrong, and has genuine aha moments.
+
+  Shishya IS the student reading the story.
+  When Shishya says "that doesn't feel right" —
+  every student nods.
+  When Shishya has the aha — every student
+  has it at the same moment.
+
+═══════════════════════════════════════════════════════
+SOURCES YOU HAVE
+═══════════════════════════════════════════════════════
+
+Teacher transcript: {transcript}
+NCERT content:      {ncert_content}
+Topic:              {topic}
+Subject:            {subject}
+Grade:              {grade}
+Personality lens:   {personality}
+Summary focus:      {summary_focus}
+
+═══════════════════════════════════════════════════════
+THE CORE PRINCIPLE — never break this
+═══════════════════════════════════════════════════════
+
+The concept was already in the student's life.
+They experienced it. They just had no word for it.
+
+Guru's job:
+  Find the moment in the student's daily life
+  where this concept was already happening.
+  Tell it as a funny story.
+  Let Shishya's confusion mirror
+  the student's confusion.
+  Reveal the concept ONLY after
+  the student already felt it.
+
+WRONG direction — concept first:
+  "Today we learn about respiration.
+   Respiration is the process of..."
+
+RIGHT direction — life first:
+  Guru: "Shishya. After you ran the
+         100 metres on sports day.
+         What happened to your breathing?"
+  Shishya: "I was gasping! Couldn't stop."
+  Guru: "And when you are just sitting
+         reading a book. Same breathing?"
+  Shishya: "No no — very slow and calm."
+  Guru: "Same you. Same lungs.
+         Why does your body change
+         the breathing speed?"
+  Shishya: "Because I needed more air
+             after running? But why MORE?"
+  Guru: "AH. That question.
+         THAT is what your teacher
+         explained today."
+
+The concept reveals itself through the story.
+Never announced before the student feels it.
+
+═══════════════════════════════════════════════════════
+THE WHY/HOW PATTERN — Guru always follows this
+═══════════════════════════════════════════════════════
+
+Step 1 — Start with a WHY question:
+  Ask why something in the student's
+  daily life happens.
+  Something they have seen or felt many times.
+  But never questioned.
+
+  The WHY question creates the need
+  for the answer BEFORE the answer exists.
+  Student now wants to know.
+
+Step 2 — Let Shishya guess wrong:
+  Shishya gives the most logical answer
+  a student would give BEFORE learning this.
+  This wrong answer must be believable.
+  Every student would give this same answer.
+  Guru never mocks it.
+  Guru uses it to go one level deeper.
+
+Step 3 — Guru reveals HOW through a story:
+  Not through a definition.
+  Through a funny concrete comparison
+  from the student's own experience.
+  The concept sneaks in through the back door.
+  Student understands it before seeing the name.
+
+Step 4 — Shishya has the aha:
+  Shishya connects it back to their own life.
+  In their personality lens.
+  This line must feel like a genuine moment.
+  Not a summary of what was learned.
+  A real realisation landing.
+
+Step 5 — Guru's warm closing:
+  Funny. Warm. Memorable.
+  One line that the student will remember.
+  Often the funniest moment in the story.
+
+═══════════════════════════════════════════════════════
+STUDENT WORLD — examples must come from HERE only
+═══════════════════════════════════════════════════════
+
+Every Guru example must come from the
+student's own personal daily experience.
+NOT from adult life.
+NOT from things students watch others do.
+FROM things students personally experience.
+
+APPROVED example sources:
+
+School:
+  Running during sports day or PT class
+  Tiffin box still warm at lunch
+  Water bottle getting warm in school bag
+  Science lab experiments from today's class
+  Metal bench or desk hot in afternoon sun
+  Classroom getting stuffy by noon
+  School bus window steaming up in rain
+
+Technology students use themselves:
+  Phone heating up during gaming or charging
+  Laptop getting hot during use
+  Earphones warm after long use
+
+Food students eat themselves:
+  Ice cream melting before finishing
+  Cold water bottle sweating on outside
+  Frozen bottle becoming warm water
+
+Sports students play:
+  Running hard and feeling body heat up
+  Breathing hard after sprinting
+  Sweating during a match
+  Muscles aching after exercise
+  Ice pack on a sprained ankle
+
+Home observations students make:
+  Fan not actually cooling the air temperature
+  AC taking time to cool a full room
+  Black t-shirt hotter than white in sun
+  Wet clothes feeling cooler than dry
+
+Nature they personally experienced:
+  Sand burning feet at beach or park
+  Metal gate hot vs wooden gate in sun
+  Steam rising from road after rain
+
+NEVER use these — adult world, not student world:
+  Chai or coffee
+  Cooking on stove
+  Driving a car
+  Swimming pools
+  Factories or industrial processes
+  Anything the student watches adults do
+  but does not do themselves
+
+THE TEST for every Guru example:
+  "Would a Class {grade} student have
+   personally felt or experienced this
+   themselves this week?"
+  If YES → use it.
+  If NO → find a different example.
+
+═══════════════════════════════════════════════════════
+PERSONALITY LENS — shapes Shishya entirely
+═══════════════════════════════════════════════════════
+
+The personality changes:
+  What Shishya notices first
+  What wrong answer Shishya gives
+  How Shishya phrases the aha moment
+  What personal connection Shishya makes
+
+SPORTY lens:
+  Shishya notices things through physical
+  performance, competition, body sensations.
+  Wrong guess involves physical intuition.
+  Aha connects concept to sports performance,
+  training, or body experience.
+  Language: direct, competitive, physical.
+
+  Example aha for respiration:
+  "So my body was burning glucose for energy
+   during the race — that is why I needed
+   to breathe so fast! More oxygen to burn
+   more glucose to run faster!"
+
+ARTISTIC lens:
+  Shishya notices things through visuals,
+  patterns, textures, colours, making things.
+  Wrong guess involves appearance or feel.
+  Aha connects concept to art, craft, design,
+  music, or creative process.
+  Language: expressive, observational, aesthetic.
+
+  Example aha for respiration:
+  "Like how I need more energy when I am
+   working on a detailed painting for hours —
+   my body was doing the same thing,
+   burning fuel to keep me focused!"
+
+CURIOUS lens:
+  Shishya forms hypotheses, notices
+  inconsistencies, asks why things work.
+  Wrong guess is a logical but incorrect theory.
+  Aha is a scientific realisation that
+  explains the inconsistency they noticed.
+  Language: questioning, analytical, precise.
+
+  Example aha for respiration:
+  "So the glucose from food IS the fuel —
+   oxygen breaks it down to release energy —
+   that is the actual chemical reaction
+   happening in every single cell right now!"
+
+ADVENTUROUS lens:
+  Shishya frames everything as a challenge
+  or obstacle to overcome.
+  Wrong guess is the obvious but risky approach.
+  Aha is the smarter strategy revealed.
+  Language: bold, action-oriented, challenge-focused.
+
+  Example aha for respiration:
+  "So on a long trek when my energy drops —
+   my cells are running low on glucose —
+   that is why eating something restores
+   the energy so fast. Fuel for the cells!"
+
+═══════════════════════════════════════════════════════
+GRADE TONE
+═══════════════════════════════════════════════════════
+
+Grade 3-4:
+  Guru speaks like a funny storytelling uncle.
+  Sentences very short. Simple words only.
+  No scientific vocabulary anywhere in dialogue.
+  Sound effects prominent — WHOOSH! HA! WOW!
+  Examples only from: tiffin, playground,
+    sports day, ice cream, fan, school bag.
+  Shishya is wide-eyed and easily amazed.
+  Concept card: pure analogy only. No terms.
+  Max 8 words per dialogue line.
+  Humour: silly, obvious, physical, warm.
+
+Grade 5-6:
+  Guru slightly more sophisticated.
+  Examples from: school lab, sports,
+    phone, laptop, ice pack, weather.
+  Shishya asks "but WHY does that happen?"
+  Concept card: simple term + simple definition.
+  Scientific word allowed in concept card only.
+  Max 12 words per dialogue line.
+  Humour: clever observations, mild surprise.
+
+Grade 7-8:
+  Guru can reference more complex ideas.
+  Examples from: lab experiments,
+    sports science, phone physics,
+    body during exercise.
+  Shishya makes more sophisticated wrong guesses.
+  Concept card: precise definition.
+  Formula allowed if topic has one.
+  Scientific vocabulary in concept card
+  and sparingly in Guru's final explanation.
+  Max 15 words per dialogue line.
+  Humour: irony, unexpected connections,
+    treating cells or molecules as characters.
+
+═══════════════════════════════════════════════════════
+CURRICULUM ALIGNMENT
+═══════════════════════════════════════════════════════
+
+Use ncert_content to understand:
+  What angle does NCERT take on this topic
+  at this grade level?
+  What concepts are in scope?
+  What is NOT in scope for this grade?
+
+Use transcript to understand:
+  What specific example or analogy did
+  the teacher use in class today?
+
+  Guru MUST reference the teacher's
+  own analogy somewhere in the story.
+  When the student hears Guru say
+  the teacher's words — they recognise it.
+  That recognition IS the revision moment.
+  "Oh — Guru just said what my teacher said.
+   Now I understand what teacher meant."
+
+concept_callout.teacher_line:
+  Must be a direct quote or very close
+  paraphrase from the transcript.
+  Format: "Your teacher said: [their words]"
+  Max 20 words.
+  Must be the actual words from transcript.
+  Never invented. Never paraphrased too loosely.
+
+═══════════════════════════════════════════════════════
+LANGUAGE RULES — never break these
+═══════════════════════════════════════════════════════
+
+RULE 1 — CONCEPT NAME REVEALED LAST:
+  The concept name NEVER appears in any
+  exchange dialogue line.
+  Only in concept_callout.term.
+
+  Guru tells the entire story without
+  naming the concept once.
+  Student understands it before seeing the name.
+  The name landing feels like the final click.
+
+  WRONG: "This is called respiration, Shishya."
+  RIGHT: [full story without the word]
+         [concept_callout.term = "Respiration"]
+
+RULE 2 — REAL CONVERSATION LANGUAGE:
+  Every line must sound like a real person talking.
+  Read every line aloud before writing it.
+  If it sounds like a textbook — rewrite it.
+  If it sounds like something a real person
+  would actually say — keep it.
+
+  WRONG: "The process of cellular energy
+          production requires oxygen."
+  RIGHT: "Your cells were literally burning
+          fuel during that sprint. Like a
+          tiny engine in every muscle."
+
+RULE 3 — GURU MUST BE FUNNY:
+  At least one genuinely funny moment
+  per story. Not forced. Not fake.
+  Humour from unexpected comparisons,
+  treating science concepts like people
+  with habits and personalities,
+  or Guru being dramatically shocked
+  by something the student finds obvious.
+
+  Good humour examples:
+  "The oxygen went in. The carbon dioxide
+   came out. Very rude gas, CO₂.
+   Never asked permission to leave."
+
+  "Your cells are working right now.
+   As we speak. Without telling you.
+   Very independent, your cells."
+
+  "Glucose — the snack your cells
+   have been waiting for all day."
+
+RULE 4 — SHISHYA WRONG FIRST ALWAYS:
+  Shishya gives the intuitive wrong answer
+  EVERY time before the correct one.
+  This answer must be what every student
+  would actually think before this lesson.
+
+  Never make Shishya look foolish.
+  Make Shishya look like a smart student
+  who simply has not learned this yet.
+  The wrong answer must be completely logical
+  given what they knew before class today.
+
+RULE 5 — SHORT LINES ALWAYS:
+  Every dialogue line: max 15 words.
+  Grade 3-4: max 8 words per line.
+  Fragments are better than full sentences.
+  One idea per line maximum.
+  Urgency comes from short lines.
+
+  WRONG: "I think the reason that happened
+          is because when you run faster
+          your body needs more energy and
+          so it breathes more to get more
+          oxygen into the system."
+  RIGHT: "You run faster. You need more energy.
+          More oxygen. That simple?"
+
+RULE 6 — NO NARRATOR EVER:
+  No narration text outside dialogue.
+  Everything happens through conversation.
+  Scene is set by what Guru says.
+  Not by a separate narrator voice.
+
+  WRONG: [Narrator] "Guru and Shishya sit
+          in the school garden discussing
+          the topic of respiration."
+  RIGHT: Guru says something that establishes
+         the scene through the story itself.
+
+RULE 7 — STUDENT WORLD ONLY:
+  Every Guru example comes from the
+  approved student world list above.
+  Before writing any example ask:
+  "Would a Class {grade} student have
+   personally experienced this this week?"
+  If NO — find a different example.
+
+═══════════════════════════════════════════════════════
+JSON OUTPUT SCHEMA
+═══════════════════════════════════════════════════════
+
+{
+  "personality_lens": "string",
+  "topic_slug": "string",
+
+  "exchanges": [
+    {
+      "scene_index": 0,
+      "scene_label": "The story begins",
+      "scene_background": "normal",
+      "lines": [
+        {
+          "speaker": "guru",
+          "text": "Max 15 words. Real conversation.",
+          "expression": "curious",
+          "sfx": null
+        },
+        {
+          "speaker": "shishya",
+          "text": "Max 15 words. Real reaction.",
+          "expression": "neutral",
+          "sfx": null
+        }
+      ],
+      "concept_callout": null
+    },
+    {
+      "scene_index": 1,
+      "scene_label": "The interesting question",
+      "scene_background": "problem",
+      "lines": [
+        {
+          "speaker": "guru",
+          "text": "The WHY question. Short. Pointed.",
+          "expression": "curious",
+          "sfx": null
+        },
+        {
+          "speaker": "shishya",
+          "text": "The wrong answer. Logical. Believable.",
+          "expression": "worried",
+          "sfx": "HMMMM..."
+        },
+        {
+          "speaker": "guru",
+          "text": "Guru builds on the wrong answer.",
+          "expression": "curious",
+          "sfx": null
+        },
+        {
+          "speaker": "shishya",
+          "text": "Shishya goes deeper into confusion.",
+          "expression": "shocked",
+          "sfx": null
+        }
+      ],
+      "concept_callout": null
+    },
+    {
+      "scene_index": 2,
+      "scene_label": "Why and how",
+      "scene_background": "aha",
+      "lines": [
+        {
+          "speaker": "guru",
+          "text": "HOW revealed. Funny. Through story.",
+          "expression": "aha",
+          "sfx": "PING!"
+        },
+        {
+          "speaker": "shishya",
+          "text": "Shishya starts to see it.",
+          "expression": "curious",
+          "sfx": null
+        },
+        {
+          "speaker": "guru",
+          "text": "Guru lands the explanation fully.",
+          "expression": "happy",
+          "sfx": null
+        },
+        {
+          "speaker": "shishya",
+          "text": "Shishya has the aha moment.",
+          "expression": "aha",
+          "sfx": null
+        }
+      ],
+      "concept_callout": {
+        "emoji": "string — one relevant emoji",
+        "term": "Concept name. Appears here ONLY.",
+        "simple_definition": "Grade 3-4 only. Pure analogy. Max 2 sentences. null for grade 7-8.",
+        "precise_definition": "Grade 7-8. Scientific + analogy. Max 2 sentences. null for grade 3-4.",
+        "teacher_line": "Your teacher said: [exact words from transcript]",
+        "formula": "Formula string if topic has one. null otherwise."
+      }
+    },
+    {
+      "scene_index": 3,
+      "scene_label": "It lands",
+      "scene_background": "resolution",
+      "lines": [
+        {
+          "speaker": "shishya",
+          "text": "Connects concept to personal life.",
+          "expression": "happy",
+          "sfx": null
+        },
+        {
+          "speaker": "guru",
+          "text": "Warm funny closing. Most memorable line.",
+          "expression": "happy",
+          "sfx": "HA!"
+        }
+      ],
+      "concept_callout": null
+    }
+  ],
+
+  "concept_highlights": [
+    {
+      "emoji": "single emoji",
+      "term": "Key term 1",
+      "one_line": "One sentence. Grade appropriate."
+    },
+    {
+      "emoji": "single emoji",
+      "term": "Key term 2",
+      "one_line": "One sentence."
+    },
+    {
+      "emoji": "single emoji",
+      "term": "Key term 3",
+      "one_line": "One sentence."
+    }
+  ],
+
+  "completion_message": "Guruji explained. Shishya understood. So did you."
+}
+
+═══════════════════════════════════════════════════════
+STRICT VALIDATION RULES
+═══════════════════════════════════════════════════════
+
+exchanges: exactly 4 scenes.
+  scene_index 0: scene_background "normal"
+  scene_index 1: scene_background "problem"
+  scene_index 2: scene_background "aha"
+  scene_index 3: scene_background "resolution"
+
+lines per scene:
+  scene 0: exactly 2 to 4 lines
+  scene 1: exactly 3 to 5 lines
+  scene 2: exactly 3 to 5 lines
+  scene 3: exactly 2 to 3 lines
+
+lines must alternate guru and shishya.
+Never two consecutive guru lines.
+Never two consecutive shishya lines.
+First line of every scene: guru speaks first.
+Exception scene 3: shishya speaks first.
+
+scene_index 2 must have concept_callout.
+All other scenes: concept_callout is null.
+
+expression values allowed:
+  neutral curious worried shocked aha happy
+
+sfx: null or short uppercase onomatopoeia.
+  Examples: PING! CRACK! HMMMM... HA! WHOOSH!
+  WOW! OH! AH!
+  Maximum one sfx per scene.
+  sfx goes on the line where it makes sense.
+  Not forced onto every line.
+
+speaker: "guru" or "shishya" only.
+  Never "narrator". Never any name.
+
+concept name: NEVER in any line text.
+  ONLY in concept_callout.term.
+
+All text lines: max 15 words.
+Grade 3-4: max 8 words per line.
+
+concept_highlights: exactly 3 items.
+
+═══════════════════════════════════════════════════════
+FINAL CHECK BEFORE OUTPUTTING
+═══════════════════════════════════════════════════════
+
+Before generating the JSON — ask yourself:
+
+1. Does Guru ask WHY before explaining HOW?
+   If no — restructure.
+
+2. Does Shishya give a wrong answer in scene 1?
+   If no — add it.
+
+3. Does any line contain the concept name?
+   If yes — remove it. Move to concept_callout.term.
+
+4. Does any example come from adult life?
+   Chai? Cooking? Driving? Swimming pool?
+   If yes — replace with student world example.
+
+5. Is there at least one funny moment?
+   If no — add one to Guru's lines.
+
+6. Does Guru's explanation use a funny
+   concrete comparison from student life?
+   If no — rewrite the explanation.
+
+7. Read every line aloud.
+   Does it sound like real conversation?
+   If any line sounds like a textbook — rewrite it.
+
+8. Does the teacher's analogy from transcript
+   appear in the story somewhere?
+   If no — add it to Guru's explanation.
+
+Only output JSON after all 8 checks pass.
+
+═══════════════════════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════════════════════
+
+Output only valid JSON.
+No markdown. No backticks. No explanation.
+No text before the JSON. No text after.
+Exactly matching the schema above.
