@@ -128,47 +128,60 @@ class AutoQuizGenerator:
         class_no = daily_class.get("class_no")
         section = daily_class.get("section")
         subject = daily_class.get("subject")
-        
-        
-        # 3. Get transcript from mymedha_db
-        # TODO: Implement cross-DB connection to mymedha_db
-        # Query should filter by:
-        #   - school_id: tenant (REQUIRED for multi-school support)
-        #   - class_no: class_no
-        #   - section: section
-        #   - subject: subject
-        #   - chapter/topic: daily_class.get("topics") or metadata
-        # 
-        # Example usage once mymedha_db connection is available:
-        # from app.db.mongo import get_mymedha_db
-        # mymedha_db = await get_mymedha_db()
-        # chapter = daily_class.get("topics", [None])[0] if daily_class.get("topics") else None
-        # transcript = await fetch_transcript_from_mymedha_db(
-        #     mymedha_db=mymedha_db,
-        #     school_id=tenant,
-        #     class_no=class_no,
-        #     section=section,
-        #     subject=subject,
-        #     chapter=chapter
-        # )
-        
-        # For now, use static transcript
-        transcript = STATIC_TRANSCRIPT
-        
-        if not transcript or len(transcript) < 50:
-            print("Transcript too short or missing, using revision quiz")
+        topics = [t for t in (daily_class.get("topics") or []) if t]
+
+        if not topics:
+            print(f"Daily class {daily_id} has no topics — skipping quiz generation")
+            return None
+
+        # 3. Build the quiz context — real transcript first, NCERT chapter as backup.
+        # Critical: the context MUST match the actual topic so the LLM doesn't drift.
+        transcript_doc = await self.db.transcripts.find_one({"daily_id": daily_id})
+        real_transcript = (transcript_doc.get("text", "") if transcript_doc else "").strip()
+
+        ncert_chapter = await self.db.curriculum_chapters.find_one({
+            "class": class_no,
+            "subject": {"$regex": f"^{subject}$", "$options": "i"},
+        })
+        ncert_block = ""
+        if ncert_chapter:
+            concepts = "\n".join(
+                f"- {c.get('name','')}: {c.get('explanation','')}"
+                for c in (ncert_chapter.get("concepts", []) or [])[:6]
+            )
+            ncert_block = (
+                f"Chapter: {ncert_chapter.get('chapter_title','')}\n"
+                f"Summary: {ncert_chapter.get('chapter_summary','')}\n"
+                f"Key Concepts:\n{concepts}"
+            )
+
+        topic_str = ", ".join(topics)
+        header = (
+            f"Class {class_no} {subject} lesson.\n"
+            f"Topics taught today: {topic_str}.\n"
+            f"Generate quiz questions specifically about these topics — not any other concept.\n\n"
+        )
+        transcript = header + (real_transcript or ncert_block or f"Topic: {topic_str}")
+
+        if len(transcript) < 80:
+            print(f"Insufficient context for {daily_id} ({subject} / {topic_str}) — using revision quiz")
             return await self._generate_revision_quiz_for_class(
                 daily_id, tenant, class_no, section, subject
             )
         
-        # 4. Extract metadata
+        # 4. Extract metadata, then OVERRIDE the topic from the daily class.
+        # The LLM-extracted topic can drift; the daily class's topics are ground truth.
         metadata = await extract_transcript_metadata(transcript, class_no, subject)
+        metadata["topic"] = topic_str
+        if not metadata.get("subtopics"):
+            metadata["subtopics"] = topics
         confidence = metadata.get("confidence", 0.0)
-        
-        print(f"Transcript metadata: {metadata}")
-        
-        # 5. Check confidence and generate quiz
-        if confidence < self.min_confidence_threshold:
+
+        print(f"Quiz context: subject={subject} topic={topic_str} confidence={confidence}")
+
+        # 5. Check confidence and generate quiz (skip threshold if we have NCERT or real transcript)
+        has_solid_context = bool(real_transcript) or bool(ncert_block)
+        if not has_solid_context and confidence < self.min_confidence_threshold:
             print(f"Low confidence ({confidence}), using revision quiz")
             return await self._generate_revision_quiz_for_class(
                 daily_id, tenant, class_no, section, subject

@@ -1,14 +1,17 @@
 from __future__ import annotations
 # app/routers/classes.py
+import asyncio
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
-from datetime import date as dt_date
+from datetime import date as dt_date, datetime, timezone
+from pydantic import BaseModel
 from bson import ObjectId
 from app.core.config import settings
 from ..core.security import api_key_guard, get_tenant
 from ..db.mongo import get_db
 from ..models.schemas import DailyClass, Summary
 from ..services.ai import summarize as ai_summarize, get_client
+from ..services.auto_quiz_generator import AutoQuizGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +20,22 @@ router = APIRouter(prefix="/classes", tags=["classes"], dependencies=[Depends(ap
 # ---------- helpers ----------
 def _today_iso() -> str:
     return dt_date.today().isoformat()
+
+
+async def _eager_generate_quiz(db, daily_id: str, tenant: str) -> None:
+    """Fire-and-forget quiz generation, called after summary save.
+    Auto_generator already handles cache check, so re-runs are no-ops."""
+    try:
+        generator = AutoQuizGenerator(db)
+        quiz = await generator.generate_quiz_for_daily_class(
+            daily_id=daily_id, tenant=tenant, force_regenerate=False
+        )
+        if quiz:
+            logger.info(f"[QUIZ_EAGER] Quiz ready for daily_id={daily_id}")
+        else:
+            logger.warning(f"[QUIZ_EAGER] Generation returned no quiz for daily_id={daily_id}")
+    except Exception as e:
+        logger.error(f"[QUIZ_EAGER] Background generation failed for daily_id={daily_id}: {e}")
 
 async def _get_or_create_daily(db, *, tenant: str, class_no: int, section: str, subject: str, date_str: str | None = None) -> str:
     d = date_str or _today_iso()
@@ -252,6 +271,7 @@ async def test_generate_summary(
         )
 
         logger.info(f"Regenerated summary for daily_id={daily_id} topic='{topic_str}'")
+        asyncio.create_task(_eager_generate_quiz(db, daily_id, tenant))
         return {
             "status": "ok",
             "daily_id": daily_id,
@@ -327,6 +347,8 @@ async def test_generate_summary(
     result_id = str(result.upserted_id) if result.upserted_id else "updated"
 
     logger.info(f"Created summary for {subject} ch{chapter_number} -> {result_id}")
+    if result.upserted_id:
+        asyncio.create_task(_eager_generate_quiz(db, result_id, tenant))
     return {
         "status": "ok",
         "daily_id": result_id,
@@ -491,3 +513,231 @@ Formulas: {formulas}"""
         "subject": chapter.get("subject", subject),
         "chapter": chapter.get("chapter_title", "")
     }
+
+
+# ---------- Comic Story endpoints ----------
+
+@router.get("/daily/{daily_id}/comic")
+async def get_comic_story(
+    daily_id: str,
+    student_id: str | None = Query(None),
+    tenant: str = Depends(get_tenant),
+):
+    """
+    Fetch (or generate and cache) the animated comic story for a daily class.
+    Results are stored in the comic_stories collection.
+    """
+    if not ObjectId.is_valid(daily_id):
+        raise HTTPException(status_code=400, detail="Invalid daily_id")
+
+    db = await get_db()
+
+    cached = await db.comic_stories.find_one({"daily_id": daily_id})
+    if cached:
+        cached["_id"] = str(cached["_id"])
+        return cached
+
+    doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Daily class not found")
+
+    topics = [t for t in (doc.get("topics") or []) if t]
+    if not topics:
+        raise HTTPException(status_code=400, detail="No topics set for this class — ask your teacher to configure today's lesson")
+
+    topic_str = ", ".join(topics)
+    subject = doc.get("subject", "Science")
+    class_no = doc.get("class_no", 7)
+
+    persona_theme = "adventure"
+    if student_id:
+        student_doc = (
+            await db.students.find_one({"_id": student_id})
+            or await db.students.find_one({"student_id": student_id})
+        )
+        if student_doc:
+            persona = student_doc.get("story_persona") or {}
+            if isinstance(persona, dict):
+                persona_theme = persona.get("theme") or persona_theme
+
+    from app.services.story_service import generate_comic_story
+    story_data = await generate_comic_story(
+        topic=topic_str,
+        subject=subject,
+        class_no=class_no,
+        persona_theme=persona_theme,
+    )
+
+    story_doc = {
+        "daily_id": daily_id,
+        "tenant": tenant,
+        "subject": subject,
+        "class_no": class_no,
+        "topic": topic_str,
+        **story_data,
+    }
+    result = await db.comic_stories.insert_one(story_doc)
+    story_doc["_id"] = str(result.inserted_id)
+
+    logger.info(f"Generated comic story for daily_id={daily_id} topic='{topic_str}'")
+    return story_doc
+
+
+@router.post("/daily/{daily_id}/comic-progress")
+async def update_comic_progress(
+    daily_id: str,
+    student_id: str = Body(...),
+    panels_read: int = Body(...),
+    completed: bool = Body(False),
+    tenant: str = Depends(get_tenant),
+):
+    """Track a student's reading progress through the animated comic story."""
+    if not ObjectId.is_valid(daily_id):
+        raise HTTPException(status_code=400, detail="Invalid daily_id")
+
+    db = await get_db()
+
+    cached = await db.comic_stories.find_one({"daily_id": daily_id}, {"panels": 1, "completion_xp": 1})
+    total_panels = len(cached.get("panels", [])) if cached else panels_read
+    base_xp = (cached or {}).get("completion_xp", 50)
+
+    await db.student_daily_progress.update_one(
+        {"student_id": student_id, "daily_id": daily_id},
+        {
+            "$set": {
+                "comic_panels_read": panels_read,
+                "comic_completed": completed,
+                "tenant": tenant,
+            },
+            "$setOnInsert": {"student_id": student_id, "daily_id": daily_id},
+        },
+        upsert=True,
+    )
+
+    xp_earned = 0
+    if completed:
+        progress = await db.student_daily_progress.find_one({"student_id": student_id, "daily_id": daily_id})
+        if progress and not progress.get("comic_xp_awarded"):
+            xp_earned = base_xp
+            await db.student_daily_progress.update_one(
+                {"student_id": student_id, "daily_id": daily_id},
+                {"$set": {"comic_xp_awarded": True}},
+            )
+
+    return {"status": "ok", "panels_read": panels_read, "total_panels": total_panels, "xp_earned": xp_earned}
+
+
+# ---------- Animated story endpoints (5-rule engine) ----------
+
+class StoryRequest(BaseModel):
+    daily_id:      str
+    student_id:    str
+    grade:         int
+    personality:   str = "curious"
+    force:         bool = False
+    summary_focus: list[str] = []
+
+
+@router.get("/story")
+async def get_existing_story(
+    daily_id:   str,
+    student_id: str,
+):
+    """Check cache for an existing generated story. Returns story or null."""
+    db = await get_db()
+    doc = await db.story_generations.find_one(
+        {"daily_id": daily_id, "student_id": student_id},
+        {"_id": 0},
+    )
+    if doc:
+        return {
+            "story":        doc["story"],
+            "from_cache":   True,
+            "generated_at": doc.get("generated_at", ""),
+        }
+    return {"story": None, "from_cache": False}
+
+
+@router.post("/story/generate")
+async def generate_story_endpoint(
+    req: StoryRequest,
+    tenant: str = Depends(get_tenant),
+):
+    """Generate (or return cached) animated comic story for a daily class."""
+    db = await get_db()
+
+    if not req.force:
+        existing = await db.story_generations.find_one(
+            {"daily_id": req.daily_id, "student_id": req.student_id}
+        )
+        if existing:
+            return {"story": existing["story"], "from_cache": True}
+
+    # Fetch daily class
+    if not ObjectId.is_valid(req.daily_id):
+        raise HTTPException(status_code=400, detail="Invalid daily_id")
+    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id)})
+    if not daily:
+        raise HTTPException(status_code=404, detail="Daily class not found")
+
+    topics = [t for t in (daily.get("topics") or []) if t]
+    if not topics:
+        raise HTTPException(status_code=400, detail="No topics set — ask your teacher to configure today's lesson")
+
+    topic = ", ".join(topics)
+    subject = daily.get("subject", "Science")
+    class_no = daily.get("class_no", req.grade)
+
+    # Fetch transcript if available
+    transcript_doc = await db.transcripts.find_one({"daily_id": req.daily_id})
+    transcript = transcript_doc.get("text", "") if transcript_doc else ""
+
+    # Fetch NCERT content for the topic
+    ncert_content = ""
+    chapter = await db.curriculum_chapters.find_one({
+        "class": class_no,
+        "subject": {"$regex": f"^{subject}$", "$options": "i"},
+    })
+    if chapter:
+        concepts = "\n".join(
+            f"- {c.get('name','')}: {c.get('explanation','')}"
+            for c in chapter.get("concepts", [])[:6]
+        )
+        ncert_content = (
+            f"Chapter: {chapter.get('chapter_title','')}\n"
+            f"Summary: {chapter.get('chapter_summary','')}\n"
+            f"Concepts:\n{concepts}"
+        )
+
+    from app.services.story_service import generate_story
+    try:
+        story, gen_ms = await generate_story(
+            topic=topic,
+            subject=subject,
+            grade=class_no,
+            transcript=transcript,
+            ncert_content=ncert_content,
+            personality=req.personality,
+            summary_focus=req.summary_focus,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.story_generations.replace_one(
+        {"daily_id": req.daily_id, "student_id": req.student_id},
+        {
+            "daily_id":      req.daily_id,
+            "student_id":    req.student_id,
+            "grade":         class_no,
+            "personality":   req.personality,
+            "story":         story,
+            "generated_at":  now,
+            "generation_ms": gen_ms,
+            "tenant":        tenant,
+        },
+        upsert=True,
+    )
+
+    logger.info(f"[STORY] Saved story for daily_id={req.daily_id} topic='{topic}' in {gen_ms}ms")
+    return {"story": story, "from_cache": False, "generated_at": now, "generation_ms": gen_ms}
