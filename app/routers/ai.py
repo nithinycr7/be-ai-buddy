@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from ..core.security import api_key_guard
@@ -9,6 +9,11 @@ from ..models.schemas import Story, ContentPrefs
 from ..services.ai import get_client
 from ..services.rag import answer_with_rag
 from ..core.config import settings
+
+
+class StoryRequest(BaseModel):
+    daily_id: str
+    student_id: str
 
 router = APIRouter(prefix="/ai", tags=["ai"], dependencies=[Depends(api_key_guard)])
 
@@ -706,7 +711,18 @@ def _merge_prefs(school_doc, student_doc) -> ContentPrefs | None:
 from bson import ObjectId
 
 @router.post("/story", response_model=Story)
-async def story_for_student(daily_id: str, student_id: str):
+async def story_for_student(
+    daily_id: str | None = Query(None),
+    student_id: str | None = Query(None),
+    payload: StoryRequest | None = Body(None),
+):
+    if payload is not None:
+        daily_id = payload.daily_id
+        student_id = payload.student_id
+
+    if not daily_id or not student_id:
+        raise HTTPException(status_code=400, detail="daily_id and student_id are required")
+
     logger = logging.getLogger(__name__)
     logger.info(f"[STORY] Starting story generation for daily_id={daily_id}, student_id={student_id}")
     
