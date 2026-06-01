@@ -34,8 +34,11 @@ class Settings(BaseSettings):
 
     # Google Gemini — primary for story (JSON) and simulation (HTML/SVG) generation
     GOOGLE_API_KEY: str = ""
-    GEMINI_STORY_MODEL: str = "gemini-3.0-flash"
+    GEMINI_STORY_MODEL: str = "gemini-2.5-flash"
     GEMINI_SIMULATION_MODEL: str = "gemini-3.0-pro"
+    # Model used for summary + assessment (quiz) generation, via Gemini's
+    # OpenAI-compatible endpoint so existing chat.completions calls work unchanged.
+    GEMINI_CHAT_MODEL: str = "gemini-2.5-flash"
 
     # Azure AI Speech Service — STT (Speech-to-Text)
     AZURE_SPEECH_KEY: str = ""

@@ -18,6 +18,28 @@ def get_client() -> AzureOpenAI:
     return _client
 
 
+_chat_client = None
+
+def get_chat_client():
+    """
+    OpenAI-compatible client backed by Gemini, used for SUMMARY + ASSESSMENT
+    generation (model = settings.GEMINI_CHAT_MODEL, e.g. gemini-2.5-flash).
+    Lets the existing client.chat.completions.create(...) calls work unchanged.
+    Falls back to the Azure client if no Google key is configured.
+    """
+    global _chat_client
+    if _chat_client is None:
+        if settings.GOOGLE_API_KEY:
+            from openai import OpenAI
+            _chat_client = OpenAI(
+                api_key=settings.GOOGLE_API_KEY,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            )
+        else:
+            _chat_client = get_client()
+    return _chat_client
+
+
 _gemini_client = None
 
 def get_gemini_client():
@@ -32,7 +54,7 @@ def get_gemini_client():
     return _gemini_client
 
 async def summarize(text: str, chunks:str,class_no:int,subject:str) -> str:
-    client = get_client()
+    client = get_chat_client()
     first_500_words = ' '.join(text.split()[:500])
     class_no = class_no
     subject = subject
@@ -85,7 +107,7 @@ DIAGRAM RULES:
 One memorable analogy or memory trick that connects to real life."""
 
     resp = client.chat.completions.create(
-        model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+        model=settings.GEMINI_CHAT_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},
             {
@@ -97,12 +119,12 @@ One memorable analogy or memory trick that connects to real life."""
     return resp.choices[0].message.content.strip()
 
 async def generate_story(topic: str, persona: str | None) -> tuple[str, int]:
-    client = get_client()
+    client = get_chat_client()
     prompt = f"Create a short motivational story (<=200 words) that teaches the concept: {topic}. "
     if persona:
         prompt += f"Style for a child who likes: {persona}."
     resp = client.chat.completions.create(
-        model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+        model=settings.GEMINI_CHAT_MODEL,
         messages=[
             {"role":"system","content":"You create engaging, child-friendly educational stories."},
             {"role":"user","content":prompt},
@@ -114,11 +136,11 @@ async def generate_story(topic: str, persona: str | None) -> tuple[str, int]:
     return text, usage
 
 async def generate_quiz(summary: str, n_questions: int = 5) -> List[Dict[str, Any]]:
-    client = get_client()
+    client = get_chat_client()
     schema = """Return JSON with a 'questions' array of objects:
     { "qid": "q1", "question": "...", "options":[{"key":"a","description":"..."},...], "correct":["a"] }"""
     resp = client.chat.completions.create(
-        model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+        model=settings.GEMINI_CHAT_MODEL,
         messages=[
             {"role":"system","content":"Generate objective MCQs for grade-school learners. 1 correct answer only unless topic needs multiple."},
             {"role":"user","content":f"Create {n_questions} MCQs from this summary:\n{summary}\n{schema}"},
@@ -143,7 +165,7 @@ async def extract_transcript_metadata(transcript: str, class_no: int, subject: s
     Extract metadata from transcript for quiz generation
     Returns: {topic, subtopics, keywords, confidence, difficulty_level}
     """
-    client = get_client()
+    client = get_chat_client()
     
     prompt = f"""Analyze this classroom transcript and extract:
 1. Main topic (1-3 words)
@@ -167,7 +189,7 @@ Return JSON format:
     
     try:
         resp = client.chat.completions.create(
-            model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+            model=settings.GEMINI_CHAT_MODEL,
             messages=[
                 {"role": "system", "content": f"You are an expert at analyzing educational content for grade {class_no} {subject}."},
                 {"role": "user", "content": prompt}
@@ -205,7 +227,7 @@ async def generate_daily_quiz(
     Q5: HOTS/Application (medium-hard)
     Q6: Story-based (medium) - fun/engaging
     """
-    client = get_client()
+    client = get_chat_client()
     
     topic = metadata.get("topic", subject)
     keywords = ", ".join(metadata.get("keywords", []))
@@ -244,7 +266,7 @@ Return JSON:
     
     try:
         resp = client.chat.completions.create(
-            model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+            model=settings.GEMINI_CHAT_MODEL,
             messages=[
                 {
                     "role": "system", 
@@ -340,7 +362,7 @@ async def generate_revision_quiz(
     Fallback quiz when transcript confidence is low
     Generates revision quiz from previously covered topics
     """
-    client = get_client()
+    client = get_chat_client()
     
     topics_str = ", ".join(last_topics) if last_topics else f"general {subject} concepts"
     
@@ -365,7 +387,7 @@ Return JSON:
     
     try:
         resp = client.chat.completions.create(
-            model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+            model=settings.GEMINI_CHAT_MODEL,
             messages=[
                 {
                     "role": "system",

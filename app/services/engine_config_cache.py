@@ -16,7 +16,7 @@ from pymongo import ASCENDING
 
 from app.db.mongo import get_db
 
-CURRENT_PROMPT_VERSION = "v4"
+CURRENT_PROMPT_VERSION = "v5"
 # Bump this when prompts/engine_prompt.txt changes — every existing
 # record with an older version will be treated as a cache miss.
 

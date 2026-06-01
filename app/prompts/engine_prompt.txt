@@ -20,7 +20,11 @@ SCHEMA — every required field must appear.
   //   balance → parts vs whole, values being compared, forces competing
   //             (fractions, probability, percentages, ratios, gravity,
   //              pressure, levers, chemical equations)
-  "world_type":   "<living | scale | balance>",
+  //   gas     → molecules in RANDOM thermal motion inside a container
+  //             (heat, temperature, internal energy, kinetic theory,
+  //              gas laws, states of matter). NOT orbital — never use
+  //              `scale` for these.
+  "world_type":   "<living | scale | balance | gas>",
   // For world_type=living, OPTIONAL. Picks which body the renderer draws.
   //   plant  → leaf/stem/root anatomy (default if omitted; use for plants,
   //            photosynthesis, ecosystems, water cycle, growth topics)
@@ -136,6 +140,26 @@ SCHEMA — every required field must appear.
     ]
   },
 
+  // ── GAS WORLD — for thermodynamics / kinetic-theory topics ───────────
+  // Omit this block entirely for non-gas topics. The renderer fills the
+  // container with `count` ambient molecules in random motion (speed +
+  // colour driven by the health metric = temperature), plus the labelled
+  // `molecules` below for the concepts you want to call out.
+  "gasWorld": {
+    "container": { "label": "<name of system/container>", "color": "<hex, optional>" },
+    "count":     <number of ambient molecules, 12–24 recommended>,
+    "molecules": [
+      {
+        "name":         "<concept label, e.g. Kinetic Energy>",
+        "color":        "<hex, optional>",
+        "radius":       <number>,
+        "grade_reveal": <integer — molecule only shown when state.grade >= this>,
+        "scienceLabel": "<optional short fact shown in science layer>"
+      }
+      // as many featured molecules as the topic needs
+    ]
+  },
+
   "particles": {
     "<grade>": {
       "char":      "<single char or short symbol>",
@@ -233,6 +257,7 @@ HARD RULES
    - If `organism_type` is `plant` (or omitted), the config MUST include `palette.plant.{leaf,stem,root}` (each with healthy/warning/critical tiers for leaf and stem).
    - If `organism_type` is `human`, the config MUST include `palette.body.{skin,accent}` where `skin` has healthy/warning/critical tiers. `palette.plant` may be omitted in this case.
 5. `world_type=scale` topics MUST include `scaleWorld.centralBody` and `scaleWorld.bodies`. Each body needs `name`, `color`, `radius`, `orbitRadius`, `speed`, `grade_reveal`. May include `palette.spaceTop/spaceMid/spaceEnd/orbit`.
+5b. `world_type=gas` topics MUST include a `gasWorld` block with `count` (12–24 ambient molecules) and a `molecules` array of the featured concepts (each with `name`, `radius`, `grade_reveal`, optional `scienceLabel`). The health metric drives temperature, so the `health_formula` should rise with the heat/energy controls. May include `palette.cold/hot/gasCool/gasWarm/container`. Do NOT include a `scaleWorld` block.
 6. Lower grade = emotional/story tone, no labels, no formula. Higher grade = scientific tone, labels on, formula on, chemistry/science layer visible.
 7. `health_formula` and all `trigger` expressions reference only `health` and control `id`s, with operators + - * / < > <= >= == && ||. No function calls. Result of health_formula must produce 0–100.
 8. Use Unicode subscripts / arrows (₂, ₆, →) — NEVER LaTeX, NEVER "->", NEVER "_2".
@@ -274,8 +299,14 @@ WORLD TYPE SELECTION — follow strictly
   circulation, nervous system, excretion, reproduction in animals)
     → `world_type=living` with `organism_type=human`. The visual must show a body,
     not a plant. Use `palette.body` for skin tone and clothing accent.
+- Thermodynamics / kinetic-theory topics (internal energy, heat, temperature,
+  gas laws, pressure-volume, states of matter, diffusion, Brownian motion)
+    → ALWAYS `world_type=gas`. NEVER use `scale` (orbital) for these — molecules
+      jiggle and bounce in a container, they do not orbit a centre. Include a
+      `gasWorld` block. The health metric is treated as temperature.
 - Astronomy / geography scale topics (solar system, plate tectonics, cells)
-    → `world_type=scale`.
+    → `world_type=scale`. Use `scale` ONLY for genuinely orbital / nested-scale
+      systems — never for gases, heat or molecular motion (use `gas`).
 - Cycle topics (water cycle, carbon cycle, life cycles)
     → `world_type=living` if a single organism is the protagonist; otherwise
       `world_type=scale` to show the system view.

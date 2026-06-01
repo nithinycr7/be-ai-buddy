@@ -10,7 +10,7 @@ from app.core.config import settings
 from ..core.security import api_key_guard, get_tenant
 from ..db.mongo import get_db
 from ..models.schemas import DailyClass, Summary
-from ..services.ai import summarize as ai_summarize, get_client
+from ..services.ai import summarize as ai_summarize, get_client, get_chat_client
 from ..services.auto_quiz_generator import AutoQuizGenerator
 
 logger = logging.getLogger(__name__)
@@ -186,9 +186,18 @@ Return ONLY valid JSON. 4-7 blocks total. NEVER include a checkpoint block. NEVE
 VALID_BLOCK_TYPES = {"concept", "terms", "steps", "analogy", "formula", "fact", "timeline", "rule"}
 
 
-def _validate_blocks(data: dict) -> list[dict]:
-    """Validate and sanitize LLM JSON output. Returns cleaned blocks."""
-    blocks = data.get("blocks", [])
+def _validate_blocks(data) -> list[dict]:
+    """Validate and sanitize LLM JSON output. Returns cleaned blocks.
+    Accepts either a top-level list (Gemini often returns this), a {"blocks": [...]}
+    object (Azure/OpenAI), or any dict that nests the list under another key."""
+    if isinstance(data, list):
+        blocks = data
+    elif isinstance(data, dict):
+        blocks = data.get("blocks")
+        if not isinstance(blocks, list):
+            blocks = next((v for v in data.values() if isinstance(v, list)), [])
+    else:
+        blocks = []
     if not isinstance(blocks, list) or len(blocks) == 0:
         raise ValueError("No blocks in response")
 
@@ -229,7 +238,7 @@ async def test_generate_summary(
     import json as json_mod
 
     db = await get_db()
-    client = get_client()
+    client = get_chat_client()   # summary blocks → Gemini (gemini-2.5-flash)
     prompt_tmpl = SUMMARY_PROMPT
 
     # ── PATH A: daily_id provided — use the doc's own data ──────────────────
@@ -249,7 +258,7 @@ async def test_generate_summary(
         topic_str    = ", ".join(topic_list)
 
         resp = client.chat.completions.create(
-            model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+            model=settings.GEMINI_CHAT_MODEL,
             messages=[
                 {"role": "system", "content": prompt_tmpl.format(class_no=doc_class_no)},
                 {"role": "user",   "content": f"Class {doc_class_no} {doc_subject} — {topic_str}"}
@@ -315,7 +324,7 @@ async def test_generate_summary(
     )
 
     resp = client.chat.completions.create(
-        model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+        model=settings.GEMINI_CHAT_MODEL,
         messages=[
             {"role": "system", "content": prompt_tmpl.format(class_no=class_no)},
             {"role": "user",   "content": f"Class {class_no} {subject} — {chapter.get('chapter_title','')}\n\n{textbook_content}"}
@@ -625,6 +634,45 @@ async def update_comic_progress(
             )
 
     return {"status": "ok", "panels_read": panels_read, "total_panels": total_panels, "xp_earned": xp_earned}
+
+
+# ---------- Provider comparison (internal/demo eval) ----------
+
+class CompareRequest(BaseModel):
+    daily_id:      str | None = None
+    transcript_id: str | None = None
+    grade:         int | None = None
+    force:         bool = False
+
+
+@router.post("/compare/generate")
+async def generate_provider_comparison(req: CompareRequest, tenant: str = Depends(get_tenant)):
+    """
+    Internal eval: generate a summary + story from EACH transcription provider
+    (faster_whisper / sarvam / gemini), holding topic + NCERT context constant.
+    Stored in `provider_comparisons`. Provide transcript_id (preferred) or daily_id.
+    """
+    from app.services.provider_comparison_service import generate_comparison
+    try:
+        doc = await generate_comparison(
+            transcript_id=req.transcript_id,
+            daily_id=req.daily_id,
+            grade=req.grade,
+            force=req.force,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return doc
+
+
+@router.get("/compare")
+async def get_provider_comparison(daily_id: str | None = None, transcript_id: str | None = None):
+    """Return a cached provider comparison by daily_id or transcript_id."""
+    from app.services.provider_comparison_service import get_comparison
+    doc = await get_comparison(daily_id=daily_id, transcript_id=transcript_id)
+    return doc or {"providers": None}
 
 
 # ---------- Animated story endpoints (5-rule engine) ----------

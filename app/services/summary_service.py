@@ -4,7 +4,7 @@ from datetime import datetime
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from app.core.config import settings
-from app.services.ai import get_client
+from app.services.ai import get_client, get_chat_client
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ class SummaryService:
         """
         Ask LLM to identify the most likely NCERT Chapter and Topic from the transcript.
         """
-        client = get_client()
+        client = get_chat_client()
         prompt = f"""
         Analyze this classroom transcript for Class {class_id} {subject}.
         Identify the matching NCERT Chapter and Topic.
@@ -134,7 +134,7 @@ class SummaryService:
         
         try:
             resp = client.chat.completions.create(
-                model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+                model=settings.GEMINI_CHAT_MODEL,
                 messages=[
                     {"role": "system", "content": "You are an automated curriculum mapper. Return strictly JSON."},
                     {"role": "user", "content": prompt}
@@ -183,7 +183,7 @@ class SummaryService:
         return context
 
     async def _generate_llm_summary(self, transcript: str, context: str) -> str:
-        client = get_client()
+        client = get_chat_client()
 
         system_prompt = """You are an expert teacher's assistant creating visual, structured class summaries for students aged 8-15.
 
@@ -237,7 +237,7 @@ One memorable analogy or memory trick that connects to real life."""
 Generate the structured visual summary following the exact format specified."""
 
         resp = client.chat.completions.create(
-            model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
+            model=settings.GEMINI_CHAT_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
