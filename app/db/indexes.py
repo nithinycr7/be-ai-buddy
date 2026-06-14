@@ -36,3 +36,10 @@ async def ensure(db: AsyncIOMotorDatabase):
     await db.curriculum_chapters.create_index("chapter_key", unique=True, name="ux_curriculum_chapter_key")
     await db.curriculum_chapters.create_index([("board", 1), ("class", 1)], name="ix_curriculum_board_class")
     await db.curriculum_chapters.create_index([("board", 1), ("class", 1), ("subject", 1), ("chapter_number", 1)], name="ix_curriculum_lookup")
+
+    # NCERT ingested figures + chapter text (exam-centric SILF story pipeline)
+    await db.ncert_figures.create_index("chapter_key", name="ix_ncert_figures_chapter")
+    await db.ncert_chapter_text.create_index([("chapter_key", 1), ("page", 1)], name="ix_ncert_text_chapter_page")
+
+    # SILF story cache
+    await db.silf_story_generations.create_index([("daily_id", 1), ("student_id", 1)], name="ix_silf_story_daily_student")

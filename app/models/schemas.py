@@ -345,4 +345,99 @@ class StudentBadge(BaseModel):
     tenant: str
 
 
+# ============================================
+# Adaptive Intervention Module
+# (Quiz -> Analysis -> Gap Detection -> Micro Intervention -> Verification)
+# ============================================
+
+class VerificationQuestion(BaseModel):
+    """A verification question. Same concept as the detected gap, DIFFERENT
+    values than the original quiz (measures understanding, not memory).
+    Shape mirrors QuizQuestion so the frontend reuses the quiz-answering UI."""
+    qid: str
+    question: str
+    question_type: str = "MCQ"  # MCQ, FILL_BLANK, SOLVE
+    difficulty: str = "easy"
+    options: List[QuizOption] = Field(default_factory=list)
+    correct: Union[str, List[str]] = Field(default_factory=list)
+    explanation: Optional[str] = None
+
+
+class VerificationQuestionPublic(BaseModel):
+    """Verification question WITHOUT the answer — sent to the student client."""
+    qid: str
+    question: str
+    question_type: str = "MCQ"
+    difficulty: str = "easy"
+    options: List[QuizOption] = Field(default_factory=list)
+
+
+class InterventionRecord(BaseModel):
+    """A stored adaptive intervention for one student on one quiz attempt."""
+    id: Optional[str] = Field(default=None, alias="_id")
+    student_id: str
+    daily_id: str
+    quiz_id: str
+    attempt_id: Optional[str] = None
+    tenant: str
+    date: Optional[str] = None
+
+    class_no: Optional[int] = None
+    section: Optional[str] = None
+    subject: Optional[str] = None
+    topic: Optional[str] = None
+
+    initial_score: float = 0.0            # 0-100 mastery on the original quiz
+    tier: str = "mastered"                # mastered | prerequisite_gap | core_gap
+    gap_concept: Optional[str] = None     # the single root gap concept
+    intervention_type: Optional[str] = None  # short label e.g. "Fraction Recall"
+    explanation: Optional[str] = None         # <=120-word recall / re-explanation
+    worked_example: Optional[str] = None
+    verification_questions: List[VerificationQuestion] = Field(default_factory=list)
+
+    verification_score: Optional[float] = None  # 0-100 after verify
+    learning_gain: Optional[float] = None        # verification - initial
+    status: str = "pending"  # pending | improved | needs_teacher_support | mastered | skipped
+
+    created_at: Optional[str] = None
+    completed_at: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+
+
+class AnalyzeInterventionRequest(BaseModel):
+    quiz_id: str
+    daily_id: str
+    student_id: str
+
+
+class InterventionAnalyzeResponse(BaseModel):
+    """Returned to the student client after a quiz. For the mastered tier,
+    intervention_id is None and there is no work to show."""
+    intervention_id: Optional[str] = None
+    tier: str                              # mastered | prerequisite_gap | core_gap
+    topic: Optional[str] = None
+    initial_score: float = 0.0
+    gap_concept: Optional[str] = None
+    intervention_type: Optional[str] = None
+    explanation: Optional[str] = None
+    worked_example: Optional[str] = None
+    verification_questions: List[VerificationQuestionPublic] = Field(default_factory=list)
+
+
+class VerifyInterventionRequest(BaseModel):
+    intervention_id: str
+    responses: Dict[str, Any]  # {qid: {"answer": str | List[str]}}
+
+
+class VerifyInterventionResponse(BaseModel):
+    intervention_id: str
+    initial_score: float
+    verification_score: float
+    learning_gain: float
+    status: str  # improved | needs_teacher_support
+    review: List[Dict[str, Any]] = Field(default_factory=list)  # per-q {qid, is_correct, correct, explanation}
+
+
 

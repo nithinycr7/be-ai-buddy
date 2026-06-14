@@ -3,8 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, ai, admin, question, chat, progress, daily_quiz, leaderboard, audio_upload, ncert
-from .routers.teacher import lesson_plan, quiz as teacher_quiz, insights as teacher_insights
+from .routers import students, classes, ai, admin, question, chat, progress, daily_quiz, leaderboard, audio_upload, ncert, intervention
+from .routers.teacher import lesson_plan, quiz as teacher_quiz, insights as teacher_insights, interventions as teacher_interventions
 
 from .db.sqlite_db import init_learning_db
 from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress
@@ -44,6 +44,8 @@ app.include_router(audio_upload.router, prefix=settings.API_PREFIX)
 app.include_router(ncert.router, prefix=settings.API_PREFIX)
 app.include_router(teacher_quiz.router, prefix=f"{settings.API_PREFIX}/teacher/quiz", tags=["Teacher Quiz"])
 app.include_router(teacher_insights.router, prefix=f"{settings.API_PREFIX}/teacher/insights", tags=["Teacher Insights"])
+app.include_router(intervention.router, prefix=settings.API_PREFIX)
+app.include_router(teacher_interventions.router, prefix=f"{settings.API_PREFIX}/teacher/interventions", tags=["Teacher Interventions"])
 app.include_router(learning_engine_router, prefix=settings.API_PREFIX)
 app.include_router(engine_router, prefix=settings.API_PREFIX)
 

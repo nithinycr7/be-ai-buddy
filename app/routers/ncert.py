@@ -1,5 +1,7 @@
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import List, Dict, Any, Optional
 from ..db.mongo import get_db
@@ -159,3 +161,99 @@ async def get_topics(
         )
 
     return {"topics": derived}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NCERT chapter ingestion (figures + text + tables) for the SILF story pipeline.
+# Upload a chapter PDF → auto-extract real textbook figures with stable signature
+# ids → available for exam-centric story generation. See ncert_ingest_service.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@router.post("/chapter/upload")
+async def upload_chapter(
+    file: UploadFile = File(..., description="NCERT chapter PDF"),
+    class_no: int = Form(...),
+    subject: str = Form(...),
+    chapter_key: str = Form(..., description="Stable chapter id, e.g. science_class9_ch05"),
+    chapter_title: str = Form(""),
+    chapter_number: int = Form(0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """
+    Ingest a chapter PDF: extract figures (base64) + page text/tables into Mongo,
+    upsert a curriculum_chapters row if missing, and return the detected figure
+    catalog so the uploader sees exactly which figures are now available.
+    """
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Please upload a PDF file")
+
+    pdf_bytes = await file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    from app.services.ncert_ingest_service import ingest_chapter_pdf
+
+    try:
+        result = await ingest_chapter_pdf(
+            pdf_bytes=pdf_bytes,
+            chapter_key=chapter_key,
+            class_no=class_no,
+            subject=_normalize_subject(subject),
+            source_name=file.filename or "uploaded.pdf",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e}")
+
+    # Ensure a curriculum_chapters row exists so the story endpoint can resolve chapter_key.
+    existing = await db[CURRICULUM_COLLECTION].find_one({"chapter_key": chapter_key}, {"_id": 1})
+    if not existing:
+        now = datetime.now(timezone.utc)
+        await db[CURRICULUM_COLLECTION].insert_one({
+            "chapter_key": chapter_key,
+            "board": "NCERT",
+            "class": class_no,
+            "subject": _normalize_subject(subject),
+            "chapter_number": chapter_number or 0,
+            "chapter_title": chapter_title or chapter_key,
+            "concepts": [],
+            "created_at": now,
+            "updated_at": now,
+            "source": "ncert_chapter_upload",
+        })
+
+    return result
+
+
+@router.get("/figures")
+async def list_figures(
+    chapter_key: str = Query(..., description="Chapter id used at ingestion time"),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Catalog of figures for a chapter (id + figure_number + caption, no image bytes)."""
+    cursor = db.ncert_figures.find(
+        {"chapter_key": chapter_key},
+        {"image_b64": 0},
+    )
+    figs = await cursor.to_list(length=None)
+    figs.sort(key=lambda f: [int(x) for x in str(f.get("figure_number", "0")).split(".") if x.isdigit()] or [0])
+    return {"figures": figs}
+
+
+@router.get("/figure/{figure_id}")
+async def get_figure(
+    figure_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Single figure with its base64 image — the lazy read path for the story view."""
+    doc = await db.ncert_figures.find_one({"_id": figure_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Figure not found")
+    return {
+        "figure_id": doc["_id"],
+        "figure_number": doc.get("figure_number"),
+        "caption": doc.get("caption"),
+        "image_b64": doc.get("image_b64"),
+        "width": doc.get("width"),
+        "height": doc.get("height"),
+    }

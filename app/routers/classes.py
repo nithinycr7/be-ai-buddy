@@ -907,3 +907,263 @@ async def generate_guru_story_endpoint(
         f"[GURU_STORY] Saved story for daily_id={req.daily_id} topic='{topic}' in {gen_ms}ms"
     )
     return {"story": story, "from_cache": False, "generated_at": now, "generation_ms": gen_ms}
+
+
+# ---------- SILF revision-story endpoints (exam-centric, NCERT-figure-grounded) ----------
+# Parallel to /story — the existing comic story is untouched. Visuals here are the
+# real NCERT textbook figures ingested into ncert_figures (see ncert_ingest_service).
+
+class SilfStoryRequest(BaseModel):
+    daily_id:         str
+    student_id:       str
+    grade:            int
+    chapter_key:      str | None = None   # optional override; else resolved from curriculum_chapters
+    narrative_format: str | None = None   # detective | broken_world | race | apprentice (else subject default)
+    force:            bool = False
+
+
+@router.get("/silf-story/formats")
+async def list_silf_formats():
+    """The narrative formats a student can choose from (id + label + description)."""
+    from app.services.silf_story_service import FORMATS, resolve_format
+    descriptions = {
+        "detective":    "Crack the case — clues lead you to the concept.",
+        "broken_world": "Something's broken. Use the concept to fix it.",
+        "race":         "Beat the clock — use the concept to win in time.",
+        "apprentice":   "Travel back and help the scientist discover it.",
+    }
+    return {
+        "formats": [
+            {"id": fid, "label": f["label"], "description": descriptions.get(fid, "")}
+            for fid, f in FORMATS.items()
+        ],
+        "default_by_subject": {
+            s: resolve_format(None, s) for s in ("Science", "Mathematics", "Physics", "Chemistry", "Biology")
+        },
+    }
+
+
+async def _resolve_chapter_key(db, *, class_no: int, subject: str, override: str | None) -> str | None:
+    if override:
+        return override
+    chapter = await db.curriculum_chapters.find_one(
+        {"class": class_no, "subject": {"$regex": f"^{subject}$", "$options": "i"}},
+        {"chapter_key": 1},
+    )
+    return chapter.get("chapter_key") if chapter else None
+
+
+@router.get("/silf-story")
+async def get_existing_silf_story(daily_id: str, student_id: str, narrative_format: str | None = None):
+    """Check cache for an existing SILF story (optionally for a specific format)."""
+    db = await get_db()
+    q = {"daily_id": daily_id, "student_id": student_id}
+    if narrative_format:
+        q["narrative_format"] = narrative_format
+    doc = await db.silf_story_generations.find_one(q, {"_id": 0})
+    if doc:
+        return {
+            "story": doc["story"],
+            "from_cache": True,
+            "generated_at": doc.get("generated_at", ""),
+            "narrative_format": doc.get("narrative_format"),
+        }
+    return {"story": None, "from_cache": False}
+
+
+@router.post("/silf-story/generate")
+async def generate_silf_story_endpoint(
+    req: SilfStoryRequest,
+    tenant: str = Depends(get_tenant),
+):
+    """Generate (or return cached) SILF revision story grounded in real NCERT figures."""
+    db = await get_db()
+
+    if not ObjectId.is_valid(req.daily_id):
+        raise HTTPException(status_code=400, detail="Invalid daily_id")
+    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id)})
+    if not daily:
+        raise HTTPException(status_code=404, detail="Daily class not found")
+
+    topics = [t for t in (daily.get("topics") or []) if t]
+    if not topics:
+        raise HTTPException(status_code=400, detail="No topics set — ask your teacher to configure today's lesson")
+
+    topic = ", ".join(topics)
+    subject = daily.get("subject", "Science")
+    class_no = daily.get("class_no", req.grade)
+
+    # Resolve the chosen narrative format (or the best default for the subject).
+    from app.services.silf_story_service import resolve_format
+    fmt_id = resolve_format(req.narrative_format, subject)
+
+    # Cache is per (daily, student, format) — switching format generates a fresh story.
+    if not req.force:
+        existing = await db.silf_story_generations.find_one(
+            {"daily_id": req.daily_id, "student_id": req.student_id, "narrative_format": fmt_id}
+        )
+        if existing:
+            return {"story": existing["story"], "from_cache": True}
+
+    transcript_doc = await db.transcripts.find_one({"daily_id": req.daily_id})
+    transcript = transcript_doc.get("text", "") if transcript_doc else ""
+
+    chapter_key = await _resolve_chapter_key(db, class_no=class_no, subject=subject, override=req.chapter_key)
+
+    # NCERT source-of-truth: prefer ingested chapter text, fall back to concept snippet.
+    ncert_content = ""
+    if chapter_key:
+        pages = await db.ncert_chapter_text.find(
+            {"chapter_key": chapter_key}, {"text": 1, "page": 1, "_id": 0}
+        ).sort("page", 1).to_list(length=None)
+        ncert_content = "\n".join(p.get("text", "") for p in pages)[:8000]
+    if not ncert_content:
+        chapter = await db.curriculum_chapters.find_one(
+            {"class": class_no, "subject": {"$regex": f"^{subject}$", "$options": "i"}}
+        )
+        if chapter:
+            concepts = "\n".join(
+                f"- {c.get('name','')}: {c.get('explanation','')}"
+                for c in chapter.get("concepts", [])[:6]
+            )
+            ncert_content = (
+                f"Chapter: {chapter.get('chapter_title','')}\n"
+                f"Summary: {chapter.get('chapter_summary','')}\n"
+                f"Concepts:\n{concepts}"
+            )
+
+    # Figure catalog the LLM may select from (no image bytes in the prompt).
+    figure_catalog = []
+    if chapter_key:
+        figs = await db.ncert_figures.find(
+            {"chapter_key": chapter_key},
+            {"_id": 1, "figure_number": 1, "caption": 1},
+        ).to_list(length=None)
+        figs.sort(key=lambda f: [int(x) for x in str(f.get("figure_number", "0")).split(".") if x.isdigit()] or [0])
+        figure_catalog = [
+            {"id": f["_id"], "figure_number": f.get("figure_number"), "caption": f.get("caption", "")}
+            for f in figs
+        ]
+
+    from app.services.silf_story_service import generate_silf_story
+    from app.services.silf_verifier_service import verify_silf_story
+    from app.services.llm_cost import usage_entry, summarize
+    catalog_ids = {f["id"] for f in figure_catalog}
+
+    # Accumulate every LLM call's token usage so we can store the cost of this story.
+    cost_calls: list[dict] = []
+
+    def _take(d, label):
+        u = d.pop("_usage", None) if isinstance(d, dict) else None
+        if u:
+            cost_calls.append(usage_entry(label, u.get("model"), u.get("in", 0), u.get("out", 0)))
+
+    async def _gen():
+        return await generate_silf_story(
+            topic=topic, subject=subject, grade=class_no, chapter_key=chapter_key or "",
+            transcript=transcript, ncert_content=ncert_content, figure_catalog=figure_catalog,
+            narrative_format=fmt_id,
+        )
+
+    try:
+        story, gen_ms = await _gen()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    _take(story, "story")
+
+    # Independent verification (deterministic checks + fresh LLM judge). Verify the
+    # TEXT story before spending animation cost; regenerate once if it fails the bar.
+    verification = await verify_silf_story(
+        story, topic=topic, subject=subject, grade=class_no,
+        ncert_content=ncert_content, catalog_ids=catalog_ids,
+    )
+    _take(verification, "verify")
+    if not verification.get("passed"):
+        logger.info(f"[SILF_STORY] verification failed ({verification['overall_score']}/10) — regenerating once")
+        try:
+            story2, gen_ms2 = await _gen()
+            _take(story2, "story:retry")
+            v2 = await verify_silf_story(
+                story2, topic=topic, subject=subject, grade=class_no,
+                ncert_content=ncert_content, catalog_ids=catalog_ids,
+            )
+            _take(v2, "verify:retry")
+            gen_ms += gen_ms2
+            # Prefer a really-judged candidate; a defaulted (judge-failed) score must
+            # never beat a real one. Among equal judge-status, take the higher score.
+            cur_ok, new_ok = verification.get("judge_ok"), v2.get("judge_ok")
+            if (new_ok and not cur_ok) or (
+                new_ok == cur_ok and v2.get("overall_score", 0) > verification.get("overall_score", 0)
+            ):
+                story, verification = story2, v2
+        except Exception as e:
+            logger.warning(f"[SILF_STORY] regeneration failed: {e}")
+    story["verification"] = verification
+
+    # Generate all left-panel visuals concurrently: scene panels (steps 1-2) + the
+    # mechanism animation (step 3). The NCERT figure (step 4) is served separately.
+    try:
+        from app.services.silf_animation_service import generate_silf_animation, generate_scene_panel
+
+        async def _visual(step):
+            t = step.get("asset_type")
+            if t == "ANIMATED_SIM" and step.get("animation_brief"):
+                return await generate_silf_animation(
+                    topic=topic, subject=subject, grade=class_no,
+                    animation_brief=step["animation_brief"], summary_text=ncert_content[:1500],
+                )
+            if t == "SCENE_PANEL" and step.get("panel_brief"):
+                return await generate_scene_panel(
+                    topic=topic, subject=subject, grade=class_no,
+                    panel_brief=step["panel_brief"], summary_text=ncert_content[:1500],
+                )
+            return None
+
+        targets = [s for s in story.get("storyboard_steps", []) if s.get("asset_type") in ("ANIMATED_SIM", "SCENE_PANEL")]
+        results = await asyncio.gather(*[_visual(s) for s in targets], return_exceptions=True)
+        for step, res in zip(targets, results):
+            html, vusage = (res if isinstance(res, tuple) else (None, None))
+            if vusage:
+                kind = "animation" if step["asset_type"] == "ANIMATED_SIM" else "scene_panel"
+                cost_calls.append(usage_entry(f"{kind}:step{step.get('step_number')}", vusage.get("model"), vusage.get("in", 0), vusage.get("out", 0)))
+            if html and step["asset_type"] == "ANIMATED_SIM":
+                step["animation_html"] = html
+            elif html and step["asset_type"] == "SCENE_PANEL":
+                step["panel_html"] = html
+            # if a visual fails, the step keeps has_visual_asset but no html → FE shows
+            # the avatar-in-scene fallback, so the split layout never looks broken.
+    except Exception as e:
+        logger.warning(f"[SILF_STORY] visual generation failed: {e}")
+
+    # Roll up the full cost of generating this one story (all LLM calls).
+    cost = summarize(cost_calls)
+    story["cost"] = cost
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.silf_story_generations.replace_one(
+        {"daily_id": req.daily_id, "student_id": req.student_id, "narrative_format": fmt_id},
+        {
+            "daily_id":         req.daily_id,
+            "student_id":       req.student_id,
+            "grade":            class_no,
+            "chapter_key":      chapter_key,
+            "narrative_format": fmt_id,
+            "story":            story,
+            "cost":             cost,
+            "generated_at":     now,
+            "generation_ms":    gen_ms,
+            "tenant":           tenant,
+        },
+        upsert=True,
+    )
+
+    v = story.get("verification") or {}
+    vs = v.get("scores", {})
+    logger.info(
+        f"[SILF_STORY] Saved daily_id={req.daily_id} topic='{topic}' "
+        f"chapter_key={chapter_key} figures={len(figure_catalog)} in {gen_ms}ms "
+        f"| INDEPENDENT overall={v.get('overall_score')}/10 passed={v.get('passed')} "
+        f"| COST calls={cost['calls']} tokens={cost['total_tokens']} "
+        f"~${cost['est_usd']} (~₹{cost['est_inr']})"
+    )
+    return {"story": story, "from_cache": False, "generated_at": now, "generation_ms": gen_ms, "verification": v, "cost": cost}

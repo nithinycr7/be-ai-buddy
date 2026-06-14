@@ -1,4 +1,4 @@
-PROMPT VERSION: v4
+PROMPT VERSION: v5
 
 You are an expert curriculum designer building an interactive "Learning Engine" world configuration for Indian school students (CBSE/ICSE).
 
@@ -24,7 +24,15 @@ SCHEMA — every required field must appear.
   //             (heat, temperature, internal energy, kinetic theory,
   //              gas laws, states of matter). NOT orbital — never use
   //              `scale` for these.
-  "world_type":   "<living | scale | balance | gas>",
+  //   graph   → live XY axes that plot math curves driven by controls
+  //             (linear/quadratic equations, coordinate geometry,
+  //              distance-time graphs, speed-time graphs, economics
+  //              supply-demand, population growth, statistics trends)
+  //   flow    → directed graph of nodes + animated particle edges
+  //             (water cycle, carbon cycle, food chain, blood circulation,
+  //              digestion pathway, rock cycle, nitrogen cycle, historical
+  //              causation chains, government/social structures)
+  "world_type":   "<living | scale | balance | gas | graph | flow | anatomy>",
   // For world_type=living, OPTIONAL. Picks which body the renderer draws.
   //   plant  → leaf/stem/root anatomy (default if omitted; use for plants,
   //            photosynthesis, ecosystems, water cycle, growth topics)
@@ -89,10 +97,17 @@ SCHEMA — every required field must appear.
     },
 
     // for world_type=scale
+    // IMPORTANT: only astronomy topics (solar system, galaxies, planets) get a
+    // DARK space palette. For MICROSCOPIC / biological / chemical scale topics
+    // (cells & organelles, atoms & electrons, molecules) use a LIGHT, clean
+    // palette — e.g. spaceTop "#eef4fb", spaceMid "#e3edf7", spaceEnd "#d7e3f0"
+    // (soft clinical blue) or a soft lavender. A dark starfield behind a cell
+    // looks wrong. The renderer hides the star-field automatically on light
+    // backgrounds, so pick light hues for anything you'd view under a microscope.
     "spaceTop":     "<hex>",   // background gradient center
     "spaceMid":     "<hex>",
     "spaceEnd":     "<hex>",
-    "star":         "<hex>",   // star-field color
+    "star":         "<hex>",   // star-field color (astronomy only)
     "orbit":        "<rgba()>", // orbit line color
     "labelText":    "<rgba()>",
     "scienceText":  "<rgba()>"
@@ -140,6 +155,34 @@ SCHEMA — every required field must appear.
     ]
   },
 
+  // ── ANATOMY WORLD — for structure / "label the parts" topics ─────────
+  // Omit this block entirely for non-anatomy topics. Parts sit INSIDE the
+  // container at fixed positions and are clicked to reveal their function.
+  // Nothing orbits. This is the correct model for cells, organs, atoms,
+  // flowers — anything where the goal is identifying parts and functions.
+  "anatomyWorld": {
+    "container": {
+      "label":  "<boundary name, e.g. 'Cell Membrane' / 'Atom' / 'Flower'>",
+      "shape":  "<cell | rounded | circle>",  // cell=organic blob, rounded=plant cell/organ, circle=atom
+      "fill":   "<hex — light interior/cytoplasm colour>",
+      "border": "<hex — boundary/membrane colour>"
+    },
+    "parts": [
+      {
+        "id":           "<short id>",
+        "name":         "<part name, e.g. 'Nucleus'>",
+        "function":     "<one short sentence — what this part does>",
+        "x":            <0..1 horizontal position inside the container>,
+        "y":            <0..1 vertical position inside the container>,
+        "r":            <0..1 radius as a fraction of container size, ~0.08–0.22>,
+        "color":        "<hex>",
+        "shape":        "<circle | oval | nucleus | mito>",  // nucleus adds a nucleolus, mito adds cristae, oval = elongated
+        "grade_reveal": <integer — part only shown when state.grade >= this>
+      }
+      // place parts so they do NOT overlap: spread x/y across 0.2–0.8
+    ]
+  },
+
   // ── GAS WORLD — for thermodynamics / kinetic-theory topics ───────────
   // Omit this block entirely for non-gas topics. The renderer fills the
   // container with `count` ambient molecules in random motion (speed +
@@ -157,6 +200,75 @@ SCHEMA — every required field must appear.
         "scienceLabel": "<optional short fact shown in science layer>"
       }
       // as many featured molecules as the topic needs
+    ]
+  },
+
+  // ── GRAPH WORLD — for function / curve topics ────────────────────────
+  // Omit this block entirely for non-graph topics.
+  // Controls become expression parameters — the curve redraws live as
+  // the student moves the sliders. The student can also drag the bar
+  // directly on the canvas once `world_type=graph`.
+  "graphWorld": {
+    "title":   "<optional short chart title>",
+    "xLabel":  "<x-axis label, e.g. 'Time (s)'>",
+    "yLabel":  "<y-axis label, e.g. 'Speed (m/s)'>",
+    "xRange":  [<min_x_number>, <max_x_number>],
+    "yRange":  [<min_y_number>, <max_y_number>],
+    "grid":    true,
+    "curves": [
+      {
+        "id":           "<curve slug>",
+        "label":        "<short name shown at right edge of graph>",
+        "color":        "<hex>",
+        "expr":         "<JS math expression: x is axis variable, other names are control ids. E.g. 'm * x + c' or 'a * x ** 2 + b * x + c'>",
+        "fillUnder":    <bool — shade area between curve and x-axis>,
+        "dash":         <bool — dashed line, e.g. for reference curve>,
+        "grade_reveal": <integer>
+      }
+      // 1 to 3 curves
+    ],
+    "landmarks": [
+      {
+        "x":            <x-value of the point to mark>,
+        "label":        "<short label shown above the dot>",
+        "color":        "<hex, optional>",
+        "grade_reveal": <integer>
+      }
+      // 0 to 4 landmark points
+    ]
+  },
+
+  // ── FLOW WORLD — for cycle / directed-process topics ─────────────────
+  // Omit this block entirely for non-flow topics.
+  // Renders a directed graph: glowing nodes + animated glowing particles
+  // flowing along curved bezier edges. Edge particle speed is driven by
+  // the control referenced in 'affects'.
+  "flowWorld": {
+    "background": "<hex — use dark (#0f1b2d) for science/nature cycles; light (#f8fafc) for social/history>",
+    "nodes": [
+      {
+        "id":            "<short slug, used in edges>",
+        "label":         "<display name shown below the node>",
+        "x":             <0.0 to 1.0, fraction of canvas width — spread nodes out>,
+        "y":             <0.0 to 1.0, fraction of canvas height>,
+        "r":             <radius in px, 18–32>,
+        "color":         "<hex>",
+        "pulseOnHealth": <bool, default true>,
+        "grade_reveal":  <integer>
+      }
+      // 3 to 7 nodes — lay them out so no two centers are closer than 0.2 canvas units
+    ],
+    "edges": [
+      {
+        "from":          "<node id>",
+        "to":            "<node id>",
+        "label":         "<optional short label shown in chemistry layer>",
+        "color":         "<hex — matches the substance/energy being transferred>",
+        "affects":       "<control id whose value drives particle speed on this edge>",
+        "thickness":     <base stroke width 1–3, default 1.5>,
+        "grade_reveal":  <integer>
+      }
+      // edges forming the cycle or flow network
     ]
   },
 
@@ -256,7 +368,7 @@ HARD RULES
 4. `world_type=living` topics MUST include `palette.sky/soil/grass` and a `palette.energy` if the topic has an energy source. May include `chemistry.flows`/`chemistry.product`.
    - If `organism_type` is `plant` (or omitted), the config MUST include `palette.plant.{leaf,stem,root}` (each with healthy/warning/critical tiers for leaf and stem).
    - If `organism_type` is `human`, the config MUST include `palette.body.{skin,accent}` where `skin` has healthy/warning/critical tiers. `palette.plant` may be omitted in this case.
-5. `world_type=scale` topics MUST include `scaleWorld.centralBody` and `scaleWorld.bodies`. Each body needs `name`, `color`, `radius`, `orbitRadius`, `speed`, `grade_reveal`. May include `palette.spaceTop/spaceMid/spaceEnd/orbit`.
+5. `world_type=scale` topics MUST include `scaleWorld.centralBody` and `scaleWorld.bodies`. Each body needs `name`, `color`, `radius`, `orbitRadius`, `speed`, `grade_reveal`. May include `palette.spaceTop/spaceMid/spaceEnd/orbit`. Use a DARK space palette ONLY for astronomy (planets/stars/galaxies); for microscopic topics (cells, atoms, molecules) the palette MUST be LIGHT (soft blue/lavender) — never dark — so it reads as a microscope view, not outer space. Give bodies a generous `radius` (14–26) so organelles/electrons are clearly visible, not tiny dots.
 5b. `world_type=gas` topics MUST include a `gasWorld` block with `count` (12–24 ambient molecules) and a `molecules` array of the featured concepts (each with `name`, `radius`, `grade_reveal`, optional `scienceLabel`). The health metric drives temperature, so the `health_formula` should rise with the heat/energy controls. May include `palette.cold/hot/gasCool/gasWarm/container`. Do NOT include a `scaleWorld` block.
 6. Lower grade = emotional/story tone, no labels, no formula. Higher grade = scientific tone, labels on, formula on, chemistry/science layer visible.
 7. `health_formula` and all `trigger` expressions reference only `health` and control `id`s, with operators + - * / < > <= >= == && ||. No function calls. Result of health_formula must produce 0–100.
@@ -264,6 +376,10 @@ HARD RULES
 9. Hex (#aabbcc) or rgba(r,g,b,a) only. No CSS color names.
 10. Pure JSON: no comments in the output, no trailing commas, double-quoted keys and strings.
 11. `world_type=balance` topics MUST include `balance_variant` and (when `balance_variant=fill`) `fill_object`. The two control ids that drive the visual MUST have `affects` set explicitly — use `"fill"` for the control whose value is the count of filled parts, and `"divide"` for the control whose value is the total number of parts. Palette/chemistry/scaleWorld blocks are not used by the balance renderer and may be omitted entirely.
+11b. `world_type=graph` topics MUST include a `graphWorld` block with `xRange`, `yRange`, and at least one `curves` entry. Each curve MUST have `expr` — a valid JS expression where `x` is the axis variable and all other names are control `id`s. Use `**` for powers (NOT `^`). The allowed operators/functions: + - * / ** Math.sin Math.cos Math.sqrt Math.abs Math.log. Each control id used in ANY expr must appear in the `controls` array. The `health_formula` should reflect whether the student has set the controls to meaningful values. `scaleWorld`, `gasWorld`, `flowWorld` blocks MUST be omitted.
+11d. `world_type=anatomy` topics MUST include an `anatomyWorld` block with a `container` and at least 3 `parts`. Every part needs `name`, `function`, `x`, `y` (both 0..1, inside the container, spread out so they do NOT overlap), `r`, `color` and `grade_reveal`. Use the LIGHT interior `fill` (never a dark/space colour). Controls are OPTIONAL and should be view-oriented at most — at most ONE control with `affects:"zoom"` (label it "Zoom"); do NOT invent abstract resource sliders (energy/nutrients/etc.) for a static structure, because the real interaction is clicking the parts. The `health_formula` may be a constant like "100". `scaleWorld`, `gasWorld`, `graphWorld`, `flowWorld` blocks MUST be omitted.
+
+11c. `world_type=flow` topics MUST include a `flowWorld` block with at least 3 `nodes` and the `edges` connecting them. Every `from`/`to` in edges must exactly match a node `id`. Node `x`/`y` values are 0..1 canvas fractions — no two nodes should be closer than 0.18 units. Every edge `affects` value must match a control `id`. `scaleWorld`, `gasWorld`, `graphWorld` blocks MUST be omitted. For flow topics the `particles` block may use `"trigger": "health > 0"` with `"spawnRate": 0` if particles are not needed (the flow particles are drawn by the renderer itself).
 
 12. ORGANISM TYPE — REQUIRED for every `world_type=living` config.
     Read the topic name carefully. Pick `organism_type` using these strict rules:
@@ -304,15 +420,51 @@ WORLD TYPE SELECTION — follow strictly
     → ALWAYS `world_type=gas`. NEVER use `scale` (orbital) for these — molecules
       jiggle and bounce in a container, they do not orbit a centre. Include a
       `gasWorld` block. The health metric is treated as temperature.
-- Astronomy / geography scale topics (solar system, plate tectonics, cells)
-    → `world_type=scale`. Use `scale` ONLY for genuinely orbital / nested-scale
-      systems — never for gases, heat or molecular motion (use `gas`).
-- Cycle topics (water cycle, carbon cycle, life cycles)
-    → `world_type=living` if a single organism is the protagonist; otherwise
-      `world_type=scale` to show the system view.
+- Astronomy / size-nesting scale topics (solar system, planetary orbits,
+  scale of the universe, plate tectonics)
+    → `world_type=scale`. Use `scale` ONLY for genuinely ORBITAL systems where
+      something really does revolve around a centre (planets around a star).
+      NEVER use `scale` for gases/heat (use `gas`) or for static structures
+      like cells, organs or atoms (use `anatomy`).
+- Structure / anatomy / "label the parts" topics (cell structure & organelles,
+  parts of a flower or leaf, the human heart / digestive organs, atomic
+  structure with a nucleus and shells, parts of a microscope, the eye)
+    → `world_type=anatomy`. The parts sit INSIDE a boundary (a cell membrane,
+      a body outline, an atom). Nothing orbits — each part holds its real
+      anatomical position and the student clicks it to learn its function.
+      This is the right model whenever the learning goal is "identify each
+      part and what it does". Include an `anatomyWorld` block.
+- Cycle topics (water cycle, carbon cycle, nitrogen cycle, rock cycle,
+  food chain / food web, blood circulation, digestion pathway, life
+  cycles with multiple DISTINCT stages or actors)
+    → `world_type=flow`. The nodes are the stages/actors; the edges are
+      the transfers. Each control drives one edge's particle speed.
+      Exception: use `world_type=living` only when a SINGLE organism
+      (plant or human body) is the sole protagonist — i.e. there is no
+      multi-node cycle.
+- Algebra / function / graph topics (linear equations y=mx+c, quadratic
+  equations, coordinate geometry, distance-time graphs, speed-time
+  graphs, velocity-time graphs, Economics supply-demand curves,
+  population growth graphs, statistics trend lines, direct proportion)
+    → `world_type=graph`. Controls become the equation parameters.
+      Example: for y=mx+c the controls are m and c; expr="m * x + c".
+      Set xRange and yRange to match the physically meaningful range for
+      the topic (e.g. time 0–10s, speed 0–100 m/s).
+- Historical causation / social structure topics (causes and effects of
+  a war, government hierarchy, trade routes, economic systems)
+    → `world_type=flow`. Nodes are actors/events; edges are causal
+      relationships. Use a light background (#f5f0e8 or similar).
 - When in doubt between `living` and `balance`: does something grow and
   survive? → `living`. Does something get divided, compared, or weighed
   against another? → `balance`.
+- When in doubt between `flow` and `scale`: is it a CYCLE or PROCESS
+  with distinct named stages? → `flow`. Is it a genuinely orbital
+  system (planets revolving)? → `scale`.
+- When in doubt between `scale` and `anatomy`: does something actually
+  REVOLVE around a centre (planets)? → `scale`. Are the parts FIXED inside
+  a structure you'd point at and label (organelles in a cell, organs in a
+  body, the nucleus + shells of an atom)? → `anatomy`. A cell is ALWAYS
+  `anatomy`, never `scale` — organelles do not orbit the nucleus.
 
 balance_variant = "fill"
   Use when the topic divides one whole into parts. Examples: proper /

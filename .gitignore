@@ -14,3 +14,6 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+# NCERT chapter PDFs (large, ingested into DB)
+data/ncert_pdfs/
