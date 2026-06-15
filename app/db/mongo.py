@@ -8,10 +8,20 @@ import certifi
 _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
 
+
+def get_client() -> AsyncIOMotorClient:
+    """Sync accessor for the shared Motor client singleton (used by workers /
+    services that need cross-database access, e.g. the transcripts DB)."""
+    global _client
+    if _client is None:
+        _client = AsyncIOMotorClient(settings.MONGODB_URI, tls=True, tlsCAFile=certifi.where())
+    return _client
+
+
 async def get_db() -> AsyncIOMotorDatabase:
     global _client, _db
     if _db is None:
-        _client = AsyncIOMotorClient(settings.MONGODB_URI,   tls=True,tlsCAFile=certifi.where())
+        _client = get_client()
         _db = _client[settings.MONGODB_DB]
     return _db
 

@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Optional, List, Dict
 from datetime import datetime
 from bson import ObjectId
@@ -8,6 +9,14 @@ from app.services.ai import get_client, get_chat_client
 
 # Configure logger
 logger = logging.getLogger(__name__)
+
+
+def _parse_class_id(class_id) -> tuple[int, str]:
+    """'9A' → (9, 'A'); '9' → (9, 'A'); falls back to (9, 'A')."""
+    m = re.match(r"\s*(\d+)\s*([A-Za-z]?)", str(class_id or ""))
+    if not m:
+        return 9, "A"
+    return int(m.group(1)), (m.group(2) or "A").upper()
 
 class SummaryService:
     def __init__(self, db_client: AsyncIOMotorClient):
@@ -20,18 +29,32 @@ class SummaryService:
         self.ncert_collection = self.db[settings.NCERT_COLLECTION_NAME]
         self.summary_collection = self.db.student_daily_summary
         
-    async def generate_summary(self, transcript_id: str) -> bool:
+    async def generate_summary(self, transcript_id: str, force: bool = False):
         """
-        Main entry point:
-        1. Fetch trigger transcript metadata
-        2. Aggregate all related transcripts (Day + Class + Subject + Topic)
-        3. Fetch NCERT context
-        4. Generate Summary via LLM
-        5. Save result
+        Entry point driven ONLY by a daily_transcripts._id. Everything else
+        (class, section, subject, date, topic, transcript) is derived from the
+        transcript collection — used by both the queue worker and the manual API.
+
+        1. Fetch trigger transcript metadata (class / subject / date)
+        2. Aggregate the day's related transcripts
+        3. Identify the topic from the transcript
+        4. Ensure classes_daily + generate approved summary_blocks (transcript-grounded)
+
+        Returns the summary report dict on success, or False on failure.
         """
         try:
             # 1. Fetch Trigger Transcript
+            # _id may be a string (worker convention) OR an ObjectId (manually-inserted
+            # docs). Try string first, then ObjectId.
             trigger_doc = await self.transcripts_db.daily_transcripts.find_one({"_id": transcript_id})
+            if not trigger_doc and ObjectId.is_valid(transcript_id):
+                trigger_doc = await self.transcripts_db.daily_transcripts.find_one({"_id": ObjectId(transcript_id)})
+                if trigger_doc:
+                    logger.warning(
+                        f"daily_transcripts[{transcript_id}] uses a non-standard ObjectId _id. "
+                        f"The canonical _id is '{{schoolId}}_{{classId}}_{{subject}}_{{timestamp}}' "
+                        f"(use POST /api/classes/daily/transcript-doc to insert correctly)."
+                    )
             if not trigger_doc:
                 logger.error(f"Transcript not found: {transcript_id}")
                 return False
@@ -42,8 +65,17 @@ class SummaryService:
             subject = trigger_doc.get("subject")
             timestamp = trigger_doc.get("timestamp")
             
-            # Identify Date (from timestamp)
-            dt = datetime.fromtimestamp(timestamp)
+            # Identify Date: timestamp (int) → createdAt (ISO/datetime) → now
+            if isinstance(timestamp, (int, float)) and timestamp:
+                dt = datetime.fromtimestamp(timestamp)
+            else:
+                ca = trigger_doc.get("createdAt")
+                try:
+                    dt = ca if isinstance(ca, datetime) else (
+                        datetime.fromisoformat(str(ca).replace("Z", "+00:00")) if ca else datetime.utcnow()
+                    )
+                except Exception:
+                    dt = datetime.utcnow()
             start_of_day = int(dt.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
             end_of_day = int(dt.replace(hour=23, minute=59, second=59, microsecond=999999).timestamp())
 
@@ -62,52 +94,43 @@ class SummaryService:
                 "timestamp": {"$gte": start_of_day, "$lte": end_of_day}
             })
             
-            related_docs = await cursor.to_list(length=None)
-            if not related_docs:
-                logger.warning("No related transcripts found (consistency check failed?)")
-                return False
+            # Manual docs have no timestamp window → the query finds nothing; fall back
+            # to just the trigger doc so single-doc / manual inserts still summarize.
+            related_docs = await cursor.to_list(length=None) or [trigger_doc]
                 
-            combined_text = "\n\n".join([doc.get("transcript_text", "") for doc in related_docs])
+            from app.services.summary_blocks import best_transcript_text
+            combined_text = "\n\n".join(
+                t for t in (best_transcript_text(doc) for doc in related_docs) if t
+            )
+            if not combined_text.strip():
+                logger.error(f"No transcript text in {transcript_id} (top-level or any provider)")
+                return False
+
+            # 3. Topic: use the doc's own topic if present, else identify via LLM
+            topic_name = (trigger_doc.get("topic") or "").strip()
+            chapter_name = (trigger_doc.get("chapter") or "").strip()
+            if not topic_name:
+                topic_info = await self._identify_topic(combined_text, class_id, subject)
+                chapter_name = chapter_name or topic_info.get("chapter")
+                topic_name = topic_info.get("topic")
             
-            # Identify Topic from Combined Text using LLM
-            topic_info = await self._identify_topic(combined_text, class_id, subject)
-            chapter_name = topic_info.get("chapter")
-            topic_name = topic_info.get("topic")
-            
-            if not chapter_name or not topic_name:
+            if not topic_name:
                 logger.error(f"Could not identify topic for {subject} class {class_id}")
                 return False
 
-            # 3. Fetch NCERT Data
-            ncert_context = await self._fetch_ncert_context(class_id, subject, chapter_name, topic_name)
-            
-            # 4. Generate Summary
-            summary_result = await self._generate_llm_summary(combined_text, ncert_context)
-            
-            # 5. Save Summary
-            summary_doc = {
-                "school_id": school_id,
-                "class_id": class_id,
-                "section": "A", # TODO: Where to get section? Assumed 'A' or need to extract from daily_id parsing logic if encoded
-                "subject": subject,
-                "date": dt.date().isoformat(),
-                "chapter": chapter_name,
-                "topic": topic_name,
-                "summary": summary_result,
-                "transcript_ids": [str(d["_id"]) for d in related_docs],
-                "created_at": datetime.utcnow().isoformat()
-            }
-            
-            # Upsert ID based on core fields to avoid duplicates for same day/class/subject
-            composite_id = f"{school_id}_{class_id}_{subject}_{dt.date().isoformat()}"
-            await self.summary_collection.update_one(
-                {"_id": composite_id},
-                {"$set": summary_doc},
-                upsert=True
+            # 3-5. Same unified path the API uses: ensure the classes_daily record
+            # exists (create if absent, carrying this transcript's id), then generate
+            # the approved summary_blocks from transcript + NCERT and stamp them in.
+            class_num, section = _parse_class_id(class_id)
+            date_iso = dt.date().isoformat()
+            from app.services.summary_blocks import summarize_daily_from_transcript
+            result = await summarize_daily_from_transcript(
+                self.db, class_no=class_num, section=section, subject=subject, date=date_iso,
+                topics=[topic_name], transcript_text=combined_text,
+                transcript_id=transcript_id, force=force,
             )
-            
-            logger.info(f"✅ Generated Summary for {composite_id}")
-            return True
+            logger.info(f"✅ Summary from transcript {transcript_id} → daily {result.get('daily_id')} ({result})")
+            return result
 
         except Exception as e:
             logger.error(f"Summary Generation Failed: {e}", exc_info=True)

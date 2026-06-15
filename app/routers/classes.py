@@ -369,6 +369,173 @@ async def test_generate_summary(
     }
 
 
+@router.post("/daily/mindmap")
+async def generate_daily_mindmap(
+    daily_id: str = Query(..., description="classes_daily document id"),
+    force: bool = Query(False, description="Regenerate even if a mind map is cached"),
+    tenant: str = Depends(get_tenant),
+):
+    """
+    Hierarchical mind-map tree for a class, built from its summary_blocks
+    (concept titles + key terms). Lazy + cached: generated on first request and
+    stamped onto the classes_daily doc as `mindmap`, so every existing class can
+    get a map without regenerating its summary.
+
+    Returns { "root": str, "branches": [ {label, note?, children?}, ... ] }.
+    """
+    from app.services.mindmap import generate_mindmap
+
+    if not ObjectId.is_valid(daily_id):
+        raise HTTPException(400, "Invalid daily_id")
+
+    db = await get_db()
+    doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+    if not doc:
+        raise HTTPException(404, f"classes_daily {daily_id} not found")
+
+    cached = doc.get("mindmap")
+    if cached and not force:
+        return cached
+
+    blocks = doc.get("summary_blocks") or []
+    topics = [t for t in (doc.get("topics") or []) if t]
+    topic_str = ", ".join(topics) if topics else doc.get("subject", "Today's Topic")
+
+    tree = await generate_mindmap(
+        class_no=doc.get("class_no", 7),
+        subject=doc.get("subject", "Science"),
+        topic=topic_str,
+        summary_blocks=blocks,
+    )
+
+    await db.classes_daily.update_one(
+        {"_id": doc["_id"]}, {"$set": {"mindmap": tree}}
+    )
+    logger.info(f"Generated mind map for daily_id={daily_id} ({len(tree.get('branches', []))} branches)")
+    return tree
+
+
+# ---------- Transcript-grounded summary (manual / demo flow) ----------
+# Drop a transcript in the DB, then generate the approved summary_blocks from it
+# straight into classes_daily — the backup path when there's no audio to record.
+
+class ManualTranscript(BaseModel):
+    text: str
+
+
+class SummarizeRequest(BaseModel):
+    # Either point at an existing daily…
+    daily_id:        str | None = None
+    # …or provide these to create-if-missing (matched by class_no/section/subject/date):
+    class_no:        int | None = None
+    section:         str = "A"
+    subject:         str | None = None
+    date:            str | None = None          # ISO date; defaults to today
+    topics:          list[str] | None = None
+    # transcript source + options
+    transcript_id:   str | None = None          # daily_transcripts _id (audio pipeline)
+    transcript_text: str | None = None          # paste raw transcript directly
+    chapter_key:     str | None = None          # optional NCERT chapter override
+    force:           bool = False               # regenerate even if summary_blocks exist
+
+
+@router.post("/daily/{daily_id}/transcript")
+async def add_manual_transcript(
+    daily_id: str, payload: ManualTranscript, tenant: str = Depends(get_tenant),
+):
+    """Manually stamp a transcript for a daily class (keyed by daily_id) — the same
+    `transcripts` collection the story/summary read. Use for demos without audio."""
+    db = await get_db()
+    if not ObjectId.is_valid(daily_id):
+        raise HTTPException(400, "Invalid daily_id")
+    if not await db.classes_daily.find_one({"_id": ObjectId(daily_id)}):
+        raise HTTPException(404, "Daily class not found")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.transcripts.replace_one(
+        {"daily_id": daily_id},
+        {"daily_id": daily_id, "text": payload.text, "source": "manual", "tenant": tenant, "created_at": now},
+        upsert=True,
+    )
+    return {"status": "ok", "daily_id": daily_id, "chars": len(payload.text)}
+
+
+class DailyTranscriptDoc(BaseModel):
+    school_id:       str = "evalschool"
+    class_id:        str                       # "9" or "9A"
+    subject:         str = "Science"
+    transcript_text: str
+    timestamp:       int | None = None         # epoch seconds; defaults to now
+    topic:           str | None = None         # optional; skips LLM topic-identification
+    chapter:         str | None = None
+
+
+@router.post("/daily/transcript-doc")
+async def create_daily_transcript_doc(req: DailyTranscriptDoc, tenant: str = Depends(get_tenant)):
+    """Insert a daily_transcripts doc the CORRECT way — with the worker's composite
+    string `_id` ({schoolId}_{classId}_{subject}_{timestamp}) — so manual docs are
+    consistent with audio-pipeline docs. Returns the `transcript_id` to summarize with."""
+    from app.db.mongo import get_client
+    from app.services.summary_blocks import insert_daily_transcript
+    if not (req.transcript_text or "").strip():
+        raise HTTPException(400, "transcript_text is required")
+    res = await insert_daily_transcript(
+        get_client(), school_id=req.school_id, class_id=req.class_id, subject=req.subject,
+        transcript_text=req.transcript_text, timestamp=req.timestamp,
+        topic=req.topic, chapter=req.chapter,
+    )
+    return {"status": "ok", **res}
+
+
+@router.post("/daily/summarize")
+async def daily_summarize(
+    req: SummarizeRequest = Body(default=SummarizeRequest()),
+    tenant: str = Depends(get_tenant),
+):
+    """Unified summary entry. Two modes:
+
+    • transcript_id ONLY  → drive everything from the daily_transcripts doc: derive
+      class/section/subject/date, identify the topic, ensure classes_daily, summarize.
+    • daily_id / explicit → ensure the classes_daily record (create if absent), then
+      summarize from the inline text or the transcripts[daily_id] entry.
+
+    Either way it skips if summary_blocks already exist (unless force=true) and stamps
+    transcript_id onto the classes_daily doc."""
+    db = await get_db()
+
+    # ── Mode A: transcript-doc driven (just a daily_transcripts._id) ──────────
+    if req.transcript_id and not req.daily_id and req.class_no is None:
+        from app.services.summary_service import SummaryService
+        from app.db.mongo import get_client as get_mongo_client
+        try:
+            result = await SummaryService(get_mongo_client()).generate_summary(req.transcript_id, force=req.force)
+        except Exception as e:
+            raise HTTPException(500, f"Summary generation failed: {e}")
+        if not result:
+            raise HTTPException(400, f"Could not summarize transcript_id={req.transcript_id} (not found / topic not identified)")
+        if not result.get("skipped"):
+            asyncio.create_task(_eager_generate_quiz(db, result["daily_id"], tenant))
+        return {"status": "ok", **result}
+
+    # ── Mode B: daily_id / explicit fields / inline text ──────────────────────
+    from app.services.summary_blocks import summarize_daily_from_transcript
+    try:
+        result = await summarize_daily_from_transcript(
+            db, daily_id=req.daily_id, tenant=tenant,
+            class_no=req.class_no, section=req.section, subject=req.subject,
+            date=req.date, topics=req.topics,
+            transcript_text=req.transcript_text, transcript_id=req.transcript_id,
+            chapter_key=req.chapter_key, force=req.force,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Summary generation failed: {e}")
+
+    if not result.get("skipped"):
+        asyncio.create_task(_eager_generate_quiz(db, result["daily_id"], tenant))
+    return {"status": "ok", **result}
+
+
 # ---------- Try It Yourself widget generation ----------
 WIDGET_PROMPT = """You generate interactive "Try It Yourself" widgets for students. Return ONLY valid JSON.
 
