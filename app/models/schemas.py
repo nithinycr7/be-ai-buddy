@@ -57,6 +57,8 @@ class DailyClass(BaseModel):
     section: str
     subject: str
     topics: List[str] = []
+    chapter_key: Optional[str] = None          # canonical NCERT chapter id (pagedex)
+    topic_ids: Optional[List[str]] = None       # canonical TOC section ids (e.g. "science_class9_ch05::5.3")
     summary: Optional[str] = None
     summary_blocks: Optional[List[Dict[str, Any]]] = None
     mindmap: Optional[Dict[str, Any]] = None

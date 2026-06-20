@@ -71,18 +71,18 @@ async def create_daily(payload: DailyClass, tenant: str = Depends(get_tenant)):
 
 
 @router.post("/daily/{daily_id}/summarize", response_model=Summary)
-async def summarize_daily(daily_id: str):
+async def summarize_daily(daily_id: str, tenant: str = Depends(get_tenant)):
     db = await get_db()
-    if not ObjectId.is_valid(daily_id) or not await db.classes_daily.find_one({"_id": ObjectId(daily_id)}):
+    if not ObjectId.is_valid(daily_id) or not await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant}):
         raise HTTPException(status_code=404, detail="Daily class not found")
 
     t = await db.transcripts.find_one({"daily_id": daily_id})
     base = t["text"] if t else ""
-    d = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+    d = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
     if d and d.get("summary"):
         base = d["summary"] + "\n" + base
     text = await ai_summarize(base) if base else ""
-    res = await db.summaries.insert_one({"daily_id": daily_id, "text": text})
+    res = await db.summaries.insert_one({"daily_id": daily_id, "text": text, "tenant": tenant})
     return Summary(id=str(res.inserted_id), daily_id=daily_id, text=text)
 
 
@@ -97,8 +97,8 @@ async def list_daily_classes(
 ):
     db = await get_db()
     query = {"tenant": tenant, "class_no": class_no, "section": section}
-    if demo:
-        # Demo mode: return all classes irrespective of date (for MVP demos)
+    if demo and not settings.is_production():
+        # Demo mode: return all classes irrespective of date (dev/demo only)
         pass
     elif date:
         query["date"] = date
@@ -118,7 +118,8 @@ async def list_daily_classes(
         daily_ids = [str(c["_id"]) for c in classes]
         p_cursor = db.student_daily_progress.find({
             "student_id": student_id,
-            "daily_id": {"$in": daily_ids}
+            "daily_id": {"$in": daily_ids},
+            "tenant": tenant
         })
         async for p in p_cursor:
             progress_map[p["daily_id"]] = p
@@ -245,7 +246,7 @@ async def test_generate_summary(
     if daily_id:
         if not ObjectId.is_valid(daily_id):
             raise HTTPException(400, "Invalid daily_id")
-        doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+        doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
         if not doc:
             raise HTTPException(404, f"classes_daily {daily_id} not found")
 
@@ -257,11 +258,25 @@ async def test_generate_summary(
         doc_class_no = doc.get("class_no", 7)
         topic_str    = ", ".join(topic_list)
 
+        # Pagedex grounding — scope NCERT to the taught section when possible.
+        from app.services.ncert.retrieval import resolve_grounding
+        grounding = await resolve_grounding(
+            db, class_no=doc_class_no, subject=doc_subject,
+            chapter_key=doc.get("chapter_key"), topics=topic_list,
+            topic_ids=[t for t in (doc.get("topic_ids") or []) if t],
+        )
+        user_content = f"Class {doc_class_no} {doc_subject} — {topic_str}"
+        if grounding["content"]:
+            user_content += (
+                "\n\nNCERT textbook reference (use for precise facts, definitions, formulas):\n"
+                f"{grounding['content'][:4000]}"
+            )
+
         resp = client.chat.completions.create(
             model=settings.GEMINI_CHAT_MODEL,
             messages=[
                 {"role": "system", "content": prompt_tmpl.format(class_no=doc_class_no)},
-                {"role": "user",   "content": f"Class {doc_class_no} {doc_subject} — {topic_str}"}
+                {"role": "user",   "content": user_content}
             ],
             response_format={"type": "json_object"},
             temperature=0.3
@@ -350,7 +365,8 @@ async def test_generate_summary(
          "subject": chapter.get("subject", subject), "date": target_date},
         {"$set": {"tenant": tenant, "class_no": class_no, "section": section,
                   "subject": chapter.get("subject", subject), "date": target_date,
-                  "topics": topics, "summary_blocks": blocks}},
+                  "topics": topics, "summary_blocks": blocks,
+                  "chapter_key": chapter.get("chapter_key")}},  # carry canonical chapter id
         upsert=True
     )
     result_id = str(result.upserted_id) if result.upserted_id else "updated"
@@ -389,7 +405,7 @@ async def generate_daily_mindmap(
         raise HTTPException(400, "Invalid daily_id")
 
     db = await get_db()
-    doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+    doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
     if not doc:
         raise HTTPException(404, f"classes_daily {daily_id} not found")
 
@@ -448,7 +464,7 @@ async def add_manual_transcript(
     db = await get_db()
     if not ObjectId.is_valid(daily_id):
         raise HTTPException(400, "Invalid daily_id")
-    if not await db.classes_daily.find_one({"_id": ObjectId(daily_id)}):
+    if not await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant}):
         raise HTTPException(404, "Daily class not found")
     now = datetime.now(timezone.utc).isoformat()
     await db.transcripts.replace_one(
@@ -708,12 +724,12 @@ async def get_comic_story(
 
     db = await get_db()
 
-    cached = await db.comic_stories.find_one({"daily_id": daily_id})
+    cached = await db.comic_stories.find_one({"daily_id": daily_id, "tenant": tenant})
     if cached:
         cached["_id"] = str(cached["_id"])
         return cached
 
-    doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+    doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
     if not doc:
         raise HTTPException(status_code=404, detail="Daily class not found")
 
@@ -728,8 +744,7 @@ async def get_comic_story(
     persona_theme = "adventure"
     if student_id:
         student_doc = (
-            await db.students.find_one({"_id": student_id})
-            or await db.students.find_one({"student_id": student_id})
+            await db.students.find_one({"student_id": student_id, "tenant": tenant})
         )
         if student_doc:
             persona = student_doc.get("story_persona") or {}
@@ -773,7 +788,7 @@ async def update_comic_progress(
 
     db = await get_db()
 
-    cached = await db.comic_stories.find_one({"daily_id": daily_id}, {"panels": 1, "completion_xp": 1})
+    cached = await db.comic_stories.find_one({"daily_id": daily_id, "tenant": tenant}, {"panels": 1, "completion_xp": 1})
     total_panels = len(cached.get("panels", [])) if cached else panels_read
     base_xp = (cached or {}).get("completion_xp", 50)
 
@@ -792,11 +807,11 @@ async def update_comic_progress(
 
     xp_earned = 0
     if completed:
-        progress = await db.student_daily_progress.find_one({"student_id": student_id, "daily_id": daily_id})
+        progress = await db.student_daily_progress.find_one({"student_id": student_id, "daily_id": daily_id, "tenant": tenant})
         if progress and not progress.get("comic_xp_awarded"):
             xp_earned = base_xp
             await db.student_daily_progress.update_one(
-                {"student_id": student_id, "daily_id": daily_id},
+                {"student_id": student_id, "daily_id": daily_id, "tenant": tenant},
                 {"$set": {"comic_xp_awarded": True}},
             )
 
@@ -857,11 +872,12 @@ class StoryRequest(BaseModel):
 async def get_existing_story(
     daily_id:   str,
     student_id: str,
+    tenant: str = Depends(get_tenant),
 ):
     """Check cache for an existing generated story. Returns story or null."""
     db = await get_db()
     doc = await db.story_generations.find_one(
-        {"daily_id": daily_id, "student_id": student_id},
+        {"daily_id": daily_id, "student_id": student_id, "tenant": tenant},
         {"_id": 0},
     )
     if doc:
@@ -883,7 +899,7 @@ async def generate_story_endpoint(
 
     if not req.force:
         existing = await db.story_generations.find_one(
-            {"daily_id": req.daily_id, "student_id": req.student_id}
+            {"daily_id": req.daily_id, "student_id": req.student_id, "tenant": tenant}
         )
         if existing:
             return {"story": existing["story"], "from_cache": True}
@@ -891,7 +907,7 @@ async def generate_story_endpoint(
     # Fetch daily class
     if not ObjectId.is_valid(req.daily_id):
         raise HTTPException(status_code=400, detail="Invalid daily_id")
-    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id)})
+    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id), "tenant": tenant})
     if not daily:
         raise HTTPException(status_code=404, detail="Daily class not found")
 
@@ -973,11 +989,12 @@ class GuruStoryRequest(BaseModel):
 async def get_existing_guru_story(
     daily_id:   str,
     student_id: str,
+    tenant: str = Depends(get_tenant),
 ):
     """Check cache for an existing generated Guru-Shishya story. Returns story or null."""
     db = await get_db()
     doc = await db.guru_shishya_stories.find_one(
-        {"daily_id": daily_id, "student_id": student_id},
+        {"daily_id": daily_id, "student_id": student_id, "tenant": tenant},
         {"_id": 0},
     )
     if doc:
@@ -999,14 +1016,14 @@ async def generate_guru_story_endpoint(
 
     if not req.force:
         existing = await db.guru_shishya_stories.find_one(
-            {"daily_id": req.daily_id, "student_id": req.student_id}
+            {"daily_id": req.daily_id, "student_id": req.student_id, "tenant": tenant}
         )
         if existing:
             return {"story": existing["story"], "from_cache": True}
 
     if not ObjectId.is_valid(req.daily_id):
         raise HTTPException(status_code=400, detail="Invalid daily_id")
-    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id)})
+    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id), "tenant": tenant})
     if not daily:
         raise HTTPException(status_code=404, detail="Daily class not found")
 
@@ -1121,10 +1138,10 @@ async def _resolve_chapter_key(db, *, class_no: int, subject: str, override: str
 
 
 @router.get("/silf-story")
-async def get_existing_silf_story(daily_id: str, student_id: str, narrative_format: str | None = None):
+async def get_existing_silf_story(daily_id: str, student_id: str, narrative_format: str | None = None, tenant: str = Depends(get_tenant)):
     """Check cache for an existing SILF story (optionally for a specific format)."""
     db = await get_db()
-    q = {"daily_id": daily_id, "student_id": student_id}
+    q = {"daily_id": daily_id, "student_id": student_id, "tenant": tenant}
     if narrative_format:
         q["narrative_format"] = narrative_format
     doc = await db.silf_story_generations.find_one(q, {"_id": 0})
@@ -1148,7 +1165,7 @@ async def generate_silf_story_endpoint(
 
     if not ObjectId.is_valid(req.daily_id):
         raise HTTPException(status_code=400, detail="Invalid daily_id")
-    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id)})
+    daily = await db.classes_daily.find_one({"_id": ObjectId(req.daily_id), "tenant": tenant})
     if not daily:
         raise HTTPException(status_code=404, detail="Daily class not found")
 
@@ -1167,7 +1184,7 @@ async def generate_silf_story_endpoint(
     # Cache is per (daily, student, format) — switching format generates a fresh story.
     if not req.force:
         existing = await db.silf_story_generations.find_one(
-            {"daily_id": req.daily_id, "student_id": req.student_id, "narrative_format": fmt_id}
+            {"daily_id": req.daily_id, "student_id": req.student_id, "narrative_format": fmt_id, "tenant": tenant}
         )
         if existing:
             return {"story": existing["story"], "from_cache": True}

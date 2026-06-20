@@ -134,6 +134,33 @@ async def generate_summary_blocks(
         return [{"type": "concept", "title": topic, "content": "Summary not available — please try again."}]
 
 
+async def _eager_downstream(db, *, daily, blocks, topic, subject, class_no, tenant) -> None:
+    """Generate mindmap + quiz right after the summary lands, so students never hit
+    an empty/404 tab. Best-effort: each is independent and never raises."""
+    daily_id = str(daily["_id"])
+
+    try:
+        from app.services.mindmap import generate_mindmap
+        tree = await generate_mindmap(
+            class_no=class_no, subject=subject, topic=topic, summary_blocks=blocks,
+        )
+        if tree and tree.get("branches"):
+            await db.classes_daily.update_one({"_id": daily["_id"]}, {"$set": {"mindmap": tree}})
+            logger.info(f"[EAGER] mindmap ready for daily_id={daily_id} ({len(tree['branches'])} branches)")
+    except Exception as e:
+        logger.warning(f"[EAGER] mindmap generation failed for daily_id={daily_id}: {e}")
+
+    try:
+        from app.services.auto_quiz_generator import AutoQuizGenerator
+        quiz = await AutoQuizGenerator(db).generate_quiz_for_daily_class(
+            daily_id=daily_id, tenant=tenant, force_regenerate=False,
+        )
+        if quiz:
+            logger.info(f"[EAGER] quiz ready for daily_id={daily_id}")
+    except Exception as e:
+        logger.warning(f"[EAGER] quiz generation failed for daily_id={daily_id}: {e}")
+
+
 async def resolve_ncert_content(db, class_no: int, subject: str, chapter_key: str | None = None) -> tuple[str, str | None]:
     """Best NCERT grounding for a class+subject: prefer the ingested chapter text,
     fall back to the curriculum_chapters concept snippet. Returns (content, chapter_key)."""
@@ -170,6 +197,7 @@ async def ensure_daily(
     db, *, daily_id: str | None = None, tenant: str = "demo-school",
     class_no: int | None = None, section: str = "A", subject: str | None = None,
     date: str | None = None, topics: list[str] | None = None, transcript_id: str | None = None,
+    chapter_key: str | None = None, topic_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """The single, shared way to get-or-create a classes_daily record (used by the
     API and the worker). Creates it if absent (carrying topics + transcript_id);
@@ -202,6 +230,10 @@ async def ensure_daily(
                 "transcript_id": transcript_id, "source": "transcript_flow",
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
+            if chapter_key:
+                doc["chapter_key"] = chapter_key
+            if topic_ids:
+                doc["topic_ids"] = [t for t in topic_ids if t]
             res = await db.classes_daily.insert_one(doc)
             daily = {**doc, "_id": res.inserted_id}
             logger.info(f"[ensure_daily] created classes_daily {match}")
@@ -212,6 +244,10 @@ async def ensure_daily(
         updates["topics"] = clean_topics
     if transcript_id and not daily.get("transcript_id"):
         updates["transcript_id"] = transcript_id
+    if chapter_key and not daily.get("chapter_key"):
+        updates["chapter_key"] = chapter_key
+    if topic_ids and not [t for t in (daily.get("topic_ids") or []) if t]:
+        updates["topic_ids"] = [t for t in topic_ids if t]
     if updates:
         await db.classes_daily.update_one({"_id": daily["_id"]}, {"$set": updates})
         daily.update(updates)
@@ -223,7 +259,7 @@ async def summarize_daily_from_transcript(
     class_no: int | None = None, section: str = "A", subject: str | None = None,
     date: str | None = None, topics: list[str] | None = None,
     transcript_text: str | None = None, transcript_id: str | None = None,
-    chapter_key: str | None = None, force: bool = False,
+    chapter_key: str | None = None, topic_ids: list[str] | None = None, force: bool = False,
 ) -> dict[str, Any]:
     """Unified flow for both the API and the worker:
       1. ensure the classes_daily record exists (create if absent, carrying transcript_id)
@@ -234,6 +270,7 @@ async def summarize_daily_from_transcript(
     daily = await ensure_daily(
         db, daily_id=daily_id, tenant=tenant, class_no=class_no, section=section,
         subject=subject, date=date, topics=topics, transcript_id=transcript_id,
+        chapter_key=chapter_key, topic_ids=topic_ids,
     )
     daily_id = str(daily["_id"])
     subject = daily.get("subject", subject or "Science")
@@ -267,7 +304,35 @@ async def summarize_daily_from_transcript(
         td = await db.transcripts.find_one({"daily_id": daily_id})
         transcript = (td or {}).get("text", "") if td else ""
 
-    ncert_content, chapter_key = await resolve_ncert_content(db, class_no, subject, chapter_key)
+    # Back-fill canonical chapter/topic ids captured at record time (the audio path
+    # drops them) so grounding can scope to the exact taught section.
+    if not daily.get("chapter_key") and not [t for t in (daily.get("topic_ids") or []) if t]:
+        from app.services.capture_meta import get_capture_meta
+        cm = await get_capture_meta(
+            db, tenant=daily.get("tenant", tenant), class_no=daily.get("class_no"),
+            section=daily.get("section", "A"), subject=daily.get("subject", subject),
+        )
+        if cm:
+            upd = {}
+            if cm.get("chapter_key"):
+                upd["chapter_key"] = cm["chapter_key"]
+            if [t for t in (cm.get("topic_ids") or []) if t]:
+                upd["topic_ids"] = [t for t in cm["topic_ids"] if t]
+            if upd:
+                await db.classes_daily.update_one({"_id": daily["_id"]}, {"$set": upd})
+                daily.update(upd)
+                logger.info(f"[SUMMARY_BLOCKS] applied capture_meta to daily_id={daily_id}: {upd}")
+
+    # Pagedex grounding: scope NCERT to the taught section when the topic is a canonical
+    # TOC id; otherwise falls back to whole-chapter / concepts (no regression).
+    from app.services.ncert.retrieval import resolve_grounding
+    grounding = await resolve_grounding(
+        db, class_no=class_no, subject=subject,
+        chapter_key=chapter_key or daily.get("chapter_key"),
+        topics=[t for t in (daily.get("topics") or []) if t],
+        topic_ids=[t for t in (daily.get("topic_ids") or []) if t],
+    )
+    ncert_content, chapter_key = grounding["content"], grounding["chapter_key"]
     blocks = await generate_summary_blocks(
         class_no=class_no, subject=subject, topic=topic,
         transcript=transcript, ncert_content=ncert_content,
@@ -275,11 +340,19 @@ async def summarize_daily_from_transcript(
     await db.classes_daily.update_one({"_id": daily["_id"]}, {"$set": {"summary_blocks": blocks}})
     logger.info(
         f"[SUMMARY_BLOCKS] stamped {len(blocks)} blocks into daily_id={daily_id} "
-        f"topic='{topic}' transcript_chars={len(transcript)} chapter_key={chapter_key}"
+        f"topic='{topic}' transcript_chars={len(transcript)} chapter_key={chapter_key} "
+        f"ncert_scope={grounding['scope']}"
+    )
+
+    # Eager downstream so students never open an empty tab: mindmap + quiz are
+    # generated now (best-effort; failures never break the summary).
+    await _eager_downstream(
+        db, daily=daily, blocks=blocks, topic=topic,
+        subject=subject, class_no=class_no, tenant=daily.get("tenant", tenant),
     )
     return {
         "daily_id": daily_id, "topic": topic, "skipped": False,
         "blocks_count": len(blocks), "block_types": [b.get("type") for b in blocks],
         "used_transcript": bool(transcript), "transcript_chars": len(transcript),
-        "chapter_key": chapter_key,
+        "chapter_key": chapter_key, "ncert_scope": grounding["scope"],
     }

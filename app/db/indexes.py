@@ -41,5 +41,13 @@ async def ensure(db: AsyncIOMotorDatabase):
     await db.ncert_figures.create_index("chapter_key", name="ix_ncert_figures_chapter")
     await db.ncert_chapter_text.create_index([("chapter_key", 1), ("page", 1)], name="ix_ncert_text_chapter_page")
 
+    # NCERT pagedex content nodes (vectorless structured retrieval)
+    await db.ncert_nodes.create_index([("chapter_key", 1), ("order", 1)], name="ix_ncert_nodes_chapter_order")
+    await db.ncert_nodes.create_index([("chapter_key", 1), ("topic_id", 1), ("subtopic_id", 1), ("type", 1)], name="ix_ncert_nodes_section")
+    await db.ncert_nodes.create_index([("class", 1), ("subject", 1), ("chapter_number", 1)], name="ix_ncert_nodes_lookup")
+
     # SILF story cache
     await db.silf_story_generations.create_index([("daily_id", 1), ("student_id", 1)], name="ix_silf_story_daily_student")
+
+    # Capture metadata — canonical chapter/topic ids stashed at audio-upload time
+    await db.capture_meta.create_index([("tenant", 1), ("class_no", 1), ("section", 1), ("subject", 1)], name="ux_capture_meta_class", unique=True)

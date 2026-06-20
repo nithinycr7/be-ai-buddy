@@ -63,7 +63,7 @@ async def analyze(request: AnalyzeInterventionRequest,
     everyone else gets a generated micro-intervention + 3 verification questions."""
     db = await get_db()
 
-    quiz = await db.quizzes.find_one({"_id": ObjectId(request.quiz_id)})
+    quiz = await db.quizzes.find_one({"_id": ObjectId(request.quiz_id), "tenant": tenant})
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
@@ -73,6 +73,7 @@ async def analyze(request: AnalyzeInterventionRequest,
         "student_id": request.student_id,
         "daily_id": request.daily_id,
         "quiz_id": request.quiz_id,
+        "tenant": tenant,
     })
     if existing:
         if existing.get("tier") == "mastered":
@@ -106,6 +107,7 @@ async def analyze(request: AnalyzeInterventionRequest,
             "quiz_id": request.quiz_id,
             "student_id": request.student_id,
             "completed_at": {"$ne": None},
+            "tenant": tenant,
         },
         sort=[("completed_at", -1)],
     )
@@ -137,7 +139,7 @@ async def analyze(request: AnalyzeInterventionRequest,
     tier = _tier_for(initial_score)
 
     now = datetime.utcnow().isoformat()
-    daily = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id)})
+    daily = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id), "tenant": tenant})
     date_str = daily.get("date") if daily else None
 
     base_record = {
@@ -211,7 +213,7 @@ async def analyze(request: AnalyzeInterventionRequest,
     else:
         existing = await db.student_interventions.find_one(
             {"student_id": request.student_id, "daily_id": request.daily_id,
-             "quiz_id": request.quiz_id})
+             "quiz_id": request.quiz_id, "tenant": tenant})
         intervention_id = str(existing["_id"])
 
     # Public verification questions (strip the answers)
@@ -242,7 +244,7 @@ async def verify(request: VerifyInterventionRequest,
     db = await get_db()
 
     record = await db.student_interventions.find_one(
-        {"_id": ObjectId(request.intervention_id)})
+        {"_id": ObjectId(request.intervention_id), "tenant": tenant})
     if not record:
         raise HTTPException(status_code=404, detail="Intervention not found")
 

@@ -43,7 +43,7 @@ async def submit_quiz(request: SubmitQuizRequest, tenant: str = Depends(get_tena
         raise HTTPException(status_code=404, detail="Quiz not found")
     
     # Get daily class info
-    daily_class = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id)})
+    daily_class = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id), "tenant": tenant})
     if not daily_class:
         raise HTTPException(status_code=404, detail="Daily class not found")
     
@@ -65,7 +65,8 @@ async def submit_quiz(request: SubmitQuizRequest, tenant: str = Depends(get_tena
     # Get existing responses to determine attempt number
     existing_responses = await db.quiz_responses.find({
         "daily_id": request.daily_id,
-        "student_id": request.student_id
+        "student_id": request.student_id,
+        "tenant": tenant
     }).sort("attempt_number", -1).limit(1).to_list(1)
     
     attempt_number = 1
@@ -96,7 +97,8 @@ async def submit_quiz(request: SubmitQuizRequest, tenant: str = Depends(get_tena
     # Update student progress
     progress = await db.student_progress.find_one({
         "student_id": request.student_id,
-        "daily_id": request.daily_id
+        "daily_id": request.daily_id,
+        "tenant": tenant
     })
     
     if not progress:
@@ -147,7 +149,7 @@ async def submit_quiz(request: SubmitQuizRequest, tenant: str = Depends(get_tena
     
     # Upsert progress
     await db.student_progress.update_one(
-        {"student_id": request.student_id, "daily_id": request.daily_id},
+        {"student_id": request.student_id, "daily_id": request.daily_id, "tenant": tenant},
         {"$set": progress},
         upsert=True
     )

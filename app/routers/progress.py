@@ -45,18 +45,19 @@ async def track_activity(request: TrackActivityRequest, tenant: str = Depends(ge
     from bson import ObjectId
     try:
         daily_oid = ObjectId(request.daily_id)
-        daily_class = await db.classes_daily.find_one({"_id": daily_oid})
+        daily_class = await db.classes_daily.find_one({"_id": daily_oid, "tenant": tenant})
     except:
         raise HTTPException(status_code=400, detail="Invalid daily_id")
-        
+
     if not daily_class:
         raise HTTPException(status_code=404, detail="Daily class not found")
-    
+
     # Find or create progress document
     # Using 'student_daily_progress' collection as per new design
     progress = await db.student_daily_progress.find_one({
         "student_id": request.student_id,
-        "daily_id": request.daily_id
+        "daily_id": request.daily_id,
+        "tenant": tenant
     })
     
     now = datetime.utcnow().isoformat()
@@ -98,7 +99,7 @@ async def track_activity(request: TrackActivityRequest, tenant: str = Depends(ge
     
     # Upsert to database
     await db.student_daily_progress.update_one(
-        {"student_id": request.student_id, "daily_id": request.daily_id},
+        {"student_id": request.student_id, "daily_id": request.daily_id, "tenant": tenant},
         {"$set": update_fields, "$setOnInsert": {
             k: v for k, v in progress.items() if k not in update_fields and k != "total_score"
         }},

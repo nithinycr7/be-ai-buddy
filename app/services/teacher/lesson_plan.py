@@ -120,7 +120,14 @@ class LessonPlanService:
 
 
 
-    async def generate_plan(self, class_no, subject, chapter, teacher_id):
+    @staticmethod
+    def _key(obj_id: str, tenant: str | None) -> dict:
+        q: dict = {"_id": ObjectId(obj_id)}
+        if tenant:
+            q["tenant"] = tenant
+        return q
+
+    async def generate_plan(self, class_no, subject, chapter, teacher_id, tenant=None):
         client = get_client()
 
         system_message = (
@@ -163,6 +170,7 @@ class LessonPlanService:
 
         draft_doc = {
             "teacher_id": teacher_id,
+            "tenant": tenant,
             "class_no": class_no,
             "subject": subject,
             "chapter": chapter,
@@ -271,8 +279,8 @@ class LessonPlanService:
 #         }
 
 
-    async def edit_plan(self, draft_id: str, sections: list, instruction: str):
-        draft = await self.drafts.find_one({"_id": ObjectId(draft_id)})
+    async def edit_plan(self, draft_id: str, sections: list, instruction: str, tenant=None):
+        draft = await self.drafts.find_one(self._key(draft_id, tenant))
         if not draft:
             raise ValueError("Draft not found")
 
@@ -360,17 +368,18 @@ class LessonPlanService:
         }
 
 
-    async def save_plan(self, draft_id: str):
+    async def save_plan(self, draft_id: str, tenant=None):
         """
         (C) save_plan: Promote draft to permanent storage.
         """
-        draft = await self.drafts.find_one({"_id": ObjectId(draft_id)})
+        draft = await self.drafts.find_one(self._key(draft_id, tenant))
         if not draft:
             raise ValueError("Draft not found")
 
         now = datetime.now(timezone.utc)
         saved_doc = {
             "teacher_id": draft["teacher_id"],
+            "tenant": draft.get("tenant", tenant),
             "class_no": draft["class_no"],
             "subject": draft["subject"],
             "chapter": draft["chapter"],
@@ -385,7 +394,7 @@ class LessonPlanService:
         
         # Mark draft as saved
         await self.drafts.update_one(
-            {"_id": ObjectId(draft_id)},
+            self._key(draft_id, tenant),
             {"$set": {"is_saved": True, "status": "completed"}}
         )
 
@@ -394,49 +403,52 @@ class LessonPlanService:
             "status": "saved"
         }
 
-    async def get_draft(self, draft_id: str):
+    async def get_draft(self, draft_id: str, tenant=None):
         # Update lastAccessedAt when accessing draft
         await self.drafts.update_one(
-            {"_id": ObjectId(draft_id)},
+            self._key(draft_id, tenant),
             {"$set": {"lastAccessedAt": datetime.now(timezone.utc)}}
         )
-        draft = await self.drafts.find_one({"_id": ObjectId(draft_id)})
+        draft = await self.drafts.find_one(self._key(draft_id, tenant))
         if draft:
             draft["_id"] = str(draft["_id"])
             draft["type"] = "draft"
         return draft
 
-    async def get_saved_plans(self, teacher_id: str):
-        cursor = self.saved.find({"teacher_id": teacher_id})
+    async def get_saved_plans(self, teacher_id: str, tenant=None):
+        q = {"teacher_id": teacher_id}
+        if tenant:
+            q["tenant"] = tenant
+        cursor = self.saved.find(q)
         plans = await cursor.to_list(length=None)
         for p in plans:
             p["_id"] = str(p["_id"])
             p["type"] = "saved"
         return plans
 
-    async def get_saved_plan(self, plan_id: str):
+    async def get_saved_plan(self, plan_id: str, tenant=None):
         # Update lastAccessedAt
         await self.saved.update_one(
-            {"_id": ObjectId(plan_id)},
+            self._key(plan_id, tenant),
             {"$set": {"lastAccessedAt": datetime.now(timezone.utc)}}
         )
-        plan = await self.saved.find_one({"_id": ObjectId(plan_id)})
+        plan = await self.saved.find_one(self._key(plan_id, tenant))
         if plan:
             plan["_id"] = str(plan["_id"])
             plan["type"] = "saved"
         return plan
-    
-    async def update_last_accessed(self, plan_id: str, plan_type: str):
+
+    async def update_last_accessed(self, plan_id: str, plan_type: str, tenant=None):
         """
         Update lastAccessedAt timestamp for a plan
         """
         collection = self.drafts if plan_type == "draft" else self.saved
         await collection.update_one(
-            {"_id": ObjectId(plan_id)},
+            self._key(plan_id, tenant),
             {"$set": {"lastAccessedAt": datetime.now(timezone.utc)}}
         )
-    
-    async def get_recent_plans(self, teacher_id: str) -> Dict[str, List[Dict]]:
+
+    async def get_recent_plans(self, teacher_id: str, tenant=None) -> Dict[str, List[Dict]]:
         """
         Get recent plans grouped by today and this week
         """
@@ -445,11 +457,14 @@ class LessonPlanService:
         week_start = now - timedelta(days=7)
         
         # Fetch drafts (exclude saved ones)
-        drafts_cursor = self.drafts.find({
+        recent_q = {
             "teacher_id": teacher_id,
             "lastAccessedAt": {"$gte": week_start},
             "is_saved": {"$ne": True}
-        })
+        }
+        if tenant:
+            recent_q["tenant"] = tenant
+        drafts_cursor = self.drafts.find(recent_q)
         drafts = await drafts_cursor.to_list(length=None)
         
         # Combine and map to unified structure

@@ -125,7 +125,7 @@ async def get_leaderboard(
             rank = (rank_res[0]["higher_rank_count"] if rank_res else 0) + 1
             
             # Fetch user details (name)
-            student_doc = await db.students.find_one({"student_id": current_student_id})
+            student_doc = await db.students.find_one({"student_id": current_student_id, "tenant": tenant})
             name = "Me"
             avatar = None
             if student_doc:

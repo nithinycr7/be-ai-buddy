@@ -51,6 +51,7 @@ app.include_router(engine_router, prefix=settings.API_PREFIX)
 
 @app.on_event("startup")
 async def on_startup():
+    settings.assert_production_ready()  # fail fast in prod on missing secrets/placeholders
     await init_indexes()
     init_learning_db()
 

@@ -56,5 +56,32 @@ class Settings(BaseSettings):
     SUMMARY_POISON_QUEUE_NAME: str = "summary-poison"
     NCERT_COLLECTION_NAME: str = "ncert_textbooks"
 
+    # NCERT pagedex — figure images live in Blob (not base64 in Mongo).
+    NCERT_BLOB_CONTAINER: str = "ncert"
+    NCERT_INGEST_QUEUE_NAME: str = "ncert-ingest"
+    # Minutes a signed figure URL stays valid.
+    NCERT_FIGURE_SAS_TTL_MIN: int = 1440
+
+    def is_production(self) -> bool:
+        return self.ENV.lower() in {"prod", "production", "staging"}
+
+    def assert_production_ready(self) -> None:
+        """Fail fast at startup in prod when critical secrets/config are missing or
+        still set to dev placeholders. No-op in dev so the demo keeps working."""
+        if not self.is_production():
+            return
+        problems: list[str] = []
+        for key in ("MONGODB_URI", "GOOGLE_API_KEY", "AZURE_STORAGE_CONNECTION_STRING"):
+            if not getattr(self, key):
+                problems.append(f"{key} is empty")
+        if self.JWT_SECRET == "changeme":
+            problems.append("JWT_SECRET is still the dev placeholder")
+        if self.API_KEY_VALUE == "dev-local-key":
+            problems.append("API_KEY_VALUE is still the dev placeholder")
+        if problems:
+            raise RuntimeError(
+                "Refusing to start in production — fix: " + "; ".join(problems)
+            )
+
 
 settings = Settings()

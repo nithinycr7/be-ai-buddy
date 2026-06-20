@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
+from app.core.security import get_tenant
 
 router = APIRouter()
 
@@ -41,11 +42,11 @@ async def get_intervention_insights(
     section: Optional[str] = Query(None),
     subject: Optional[str] = Query(None),
     date_str: str = Query(..., alias="date", description="Date YYYY-MM-DD"),
-    tenant: str = "demo-school",
+    tenant: str = Depends(get_tenant),
     db=Depends(get_db),
 ):
     try:
-        query = {"date": date_str}
+        query = {"date": date_str, "tenant": tenant}
         if class_no:
             query["class_no"] = class_no
         if section:
@@ -58,6 +59,7 @@ async def get_intervention_insights(
         # Resolve student names / roll numbers
         sids = list({r["student_id"] for r in records if "student_id" in r})
         students = await db.students.find({
+            "tenant": tenant,
             "$or": [
                 {"student_id": {"$in": sids}},
                 {"_id": {"$in": [s for s in sids if len(str(s)) == 24]}},

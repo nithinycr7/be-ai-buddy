@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Query
+from ..core.security import get_tenant
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from ..core.security import api_key_guard
@@ -734,7 +735,7 @@ def _merge_prefs(school_doc, student_doc) -> ContentPrefs | None:
 from bson import ObjectId
 
 @router.post("/story", response_model=Story)
-async def story_for_student(daily_id: str, student_id: str):
+async def story_for_student(daily_id: str, student_id: str, tenant: str = Depends(get_tenant)):
     logger = logging.getLogger(__name__)
     logger.info(f"[STORY] Starting story generation for daily_id={daily_id}, student_id={student_id}")
     
@@ -746,13 +747,13 @@ async def story_for_student(daily_id: str, student_id: str):
             logger.error(f"[STORY] Invalid daily_id format: {daily_id}")
             raise HTTPException(status_code=400, detail="Invalid daily_id format")
         
-        d = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+        d = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
         logger.info(f"[STORY] Daily class lookup result: {d is not None}")
         if not d:
             logger.error(f"[STORY] Daily class not found for daily_id={daily_id}")
             raise HTTPException(status_code=404, detail="Daily class not found")
-        
-        s = await db.students.find_one({"student_id": student_id})
+
+        s = await db.students.find_one({"student_id": student_id, "tenant": tenant})
         logger.info(f"[STORY] Student lookup result: {s is not None}")
         
         school = await db.schools.find_one({"tenant": s.get("school_tenant")}) if s and s.get("school_tenant") else None
@@ -820,7 +821,8 @@ async def story_for_student(daily_id: str, student_id: str):
         # Auto-track story generation in progress
         progress = await db.student_progress.find_one({
             "student_id": student_id,
-            "daily_id": daily_id
+            "daily_id": daily_id,
+            "tenant": tenant
         })
         
         if not progress:
@@ -866,7 +868,7 @@ async def story_for_student(daily_id: str, student_id: str):
         
         # Upsert progress
         await db.student_progress.update_one(
-            {"student_id": student_id, "daily_id": daily_id},
+            {"student_id": student_id, "daily_id": daily_id, "tenant": tenant},
             {"$set": progress},
             upsert=True
         )
@@ -2826,7 +2828,7 @@ async def get_simulation_cache(daily_id: str):
 
 
 @router.post("/simulation")
-async def simulation_for_student(daily_id: str, student_id: str, force: bool = False):
+async def simulation_for_student(daily_id: str, student_id: str, force: bool = False, tenant: str = Depends(get_tenant)):
     logger = logging.getLogger(__name__)
     logger.info(f"[SIMULATION] daily_id={daily_id} student_id={student_id} force={force}")
 
@@ -2835,7 +2837,7 @@ async def simulation_for_student(daily_id: str, student_id: str, force: bool = F
 
     db = await get_db()
 
-    d = await db.classes_daily.find_one({"_id": ObjectId(daily_id)})
+    d = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
     if not d:
         raise HTTPException(status_code=404, detail="Daily class not found")
 
@@ -2847,7 +2849,7 @@ async def simulation_for_student(daily_id: str, student_id: str, force: bool = F
             logger.info("[SIMULATION] Returning cached simulation")
             return {"html": existing["html"]}
 
-    s = await db.students.find_one({"student_id": student_id})
+    s = await db.students.find_one({"student_id": student_id, "tenant": tenant})
     persona = s.get("story_persona") if s else None
 
     topic = ", ".join(d.get("topics", [])) or d.get("topic", "the topic")

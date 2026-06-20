@@ -11,9 +11,18 @@ async def api_key_guard(x_api_key: str | None = Header(default=None)):
         )
     return True
 
-async def get_tenant(x_tenant_id: str = Header(default="demo-school", alias="X-Tenant-ID")) -> str:
+async def get_tenant(x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID")) -> str:
     """
     Extracts the tenant ID from the X-Tenant-ID header.
-    Defaults to 'demo-school' for development convenience.
+
+    In production a tenant header is REQUIRED (no cross-school fallback). In dev we
+    default to 'demo-school' so the demo keeps working without the header.
     """
-    return x_tenant_id
+    if x_tenant_id:
+        return x_tenant_id
+    if settings.is_production():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing required X-Tenant-ID header",
+        )
+    return "demo-school"

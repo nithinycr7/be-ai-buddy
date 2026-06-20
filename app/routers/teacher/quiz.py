@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Body
 from app.db.mongo import get_db
+from app.core.security import get_tenant
 from app.services.manual_quiz_service import ManualQuizService
 from pydantic import BaseModel
 from typing import List, Optional
@@ -21,10 +22,12 @@ class CustomQuizRequest(BaseModel):
     teacher_id: Optional[str] = None
 
 @router.post("/custom")
-async def generate_custom_quiz(payload: CustomQuizRequest, db=Depends(get_db)):
+async def generate_custom_quiz(payload: CustomQuizRequest, db=Depends(get_db), tenant: str = Depends(get_tenant)):
     service = ManualQuizService(db)
     try:
-        quiz = await service.create_and_save_quiz(payload.dict())
+        data = payload.dict()
+        data["tenant"] = tenant  # header wins over any body value
+        quiz = await service.create_and_save_quiz(data)
         return quiz
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -34,9 +37,10 @@ async def list_quizzes(
     class_no: Optional[int] = None,
     subject: Optional[str] = None,
     limit: int = 50,
-    db=Depends(get_db)
+    db=Depends(get_db),
+    tenant: str = Depends(get_tenant)
 ):
-    query = {}
+    query = {"tenant": tenant}
     if class_no:
         query["class_no"] = class_no
     if subject:

@@ -155,7 +155,7 @@ async def verify_answer(
     except:
          raise HTTPException(status_code=400, detail="Invalid quiz_id format")
 
-    quiz = await db.quizzes.find_one({"_id": quiz_oid})
+    quiz = await db.quizzes.find_one({"_id": quiz_oid, "tenant": tenant})
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
@@ -249,7 +249,7 @@ async def submit_daily_quiz(
     from bson import ObjectId
     
     # 1. Get quiz
-    quiz = await db.quizzes.find_one({"_id": ObjectId(request.quiz_id)})
+    quiz = await db.quizzes.find_one({"_id": ObjectId(request.quiz_id), "tenant": tenant})
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
         
@@ -319,12 +319,13 @@ async def submit_daily_quiz(
     now = datetime.utcnow().isoformat()
     progress = await db.student_daily_progress.find_one({
         "student_id": request.student_id,
-        "daily_id": request.daily_id
+        "daily_id": request.daily_id,
+        "tenant": tenant
     })
-    
+
     if not progress:
         # Fetch daily class to get the date
-        daily_class = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id)})
+        daily_class = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id), "tenant": tenant})
         class_date = daily_class.get("date") if daily_class else datetime.utcnow().date().isoformat()
         
         # Should exist if summary/story tracked, else create
@@ -361,7 +362,7 @@ async def submit_daily_quiz(
     progress["updated_at"] = now
     
     await db.student_daily_progress.update_one(
-        {"student_id": request.student_id, "daily_id": request.daily_id},
+        {"student_id": request.student_id, "daily_id": request.daily_id, "tenant": tenant},
         {"$set": progress},
         upsert=True
     )

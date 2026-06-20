@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -10,7 +11,7 @@ class QuestionService:
 
 
 
-     async def create_question(self, question_data: dict) -> Question:
+     async def create_question(self, question_data: dict, tenant: str | None = None) -> Question:
         """Insert a new question into the DB and return Question model"""
 
         # Validate using Pydantic model
@@ -23,6 +24,9 @@ class QuestionService:
         if "_id" in data and data["_id"] is None:
             del data["_id"]
 
+        if tenant:
+            data["tenant"] = tenant
+
         # Insert into MongoDB
         result = await self.collection.insert_one(data)
 
@@ -33,8 +37,9 @@ class QuestionService:
 
 
 
-     async def get_all_questions(self) -> list[Question]:
-       questions = await self.collection.find().to_list(length=None)
-      
+     async def get_all_questions(self, tenant: str | None = None) -> list[Question]:
+       query = {"tenant": tenant} if tenant else {}
+       questions = await self.collection.find(query).to_list(length=None)
+
        return [Question(**q) for q in questions]
          

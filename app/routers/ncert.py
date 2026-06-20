@@ -140,10 +140,30 @@ async def get_topics(
 
     cc_doc = await curriculum.find_one(
         {"chapter_key": chapter_unique_id},
-        {"concepts": 1, "chapter_number": 1, "_id": 0},
+        {"concepts": 1, "chapter_number": 1, "toc": 1, "_id": 0},
     )
     if not cc_doc:
         return {"topics": []}
+
+    # Preferred: the real NCERT TOC sections (pagedex) — these are the canonical
+    # topics the pagedex keys on, so the teacher's selection joins by exact id.
+    toc = cc_doc.get("toc")
+    if toc:
+        return {
+            "topics": [
+                {
+                    "topic_title": f"{t['number']} {t['name']}",
+                    "topic_id": t["number"],
+                    "topic_unique_id": t["topic_id"],  # f"{chapter_key}::{number}"
+                    "subtopics": [
+                        {"topic_title": f"{s['number']} {s['name']}",
+                         "topic_unique_id": s["subtopic_id"]}
+                        for s in t.get("subtopics", [])
+                    ],
+                }
+                for t in toc
+            ]
+        }
 
     chapter_no = cc_doc.get("chapter_number", 0)
     derived: List[Dict[str, Any]] = []

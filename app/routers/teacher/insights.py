@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.db.mongo import get_db
+from app.core.security import get_tenant
 from typing import List, Optional
 from datetime import date
 from pydantic import BaseModel
@@ -27,7 +28,7 @@ async def get_class_insights(
     section: Optional[str] = Query(None, description="Section"),
     subject: Optional[str] = Query(None, description="Subject"),
     date_str: str = Query(..., alias="date", description="Date YYYY-MM-DD"),
-    tenant: str = "demo-school", # TODO: Get from auth
+    tenant: str = Depends(get_tenant),
     db=Depends(get_db)
 ):
     try:
@@ -44,8 +45,8 @@ async def get_class_insights(
             end_dt = start_dt
             end_date_str = date_str
 
-        # Query conditions
-        base_query = {}
+        # Query conditions — always scope to the requesting school.
+        base_query = {"tenant": tenant}
         if class_no:
             base_query["class_no"] = class_no
         if section:
