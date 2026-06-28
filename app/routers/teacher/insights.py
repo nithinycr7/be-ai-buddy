@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.db.mongo import get_db
-from app.core.security import get_tenant
+from app.core.security import get_tenant, require_role
 from typing import List, Optional
 from datetime import date
 from pydantic import BaseModel
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_role("teacher", "admin"))])
 
 class StudentInsight(BaseModel):
     id: str

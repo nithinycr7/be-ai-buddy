@@ -7,7 +7,7 @@ from datetime import date as dt_date, datetime, timezone
 from pydantic import BaseModel
 from bson import ObjectId
 from app.core.config import settings
-from ..core.security import api_key_guard, get_tenant
+from ..core.security import api_key_guard, get_tenant, require_role, get_current_user, CurrentUser, assert_can_access_student
 from ..db.mongo import get_db
 from ..models.schemas import DailyClass, Summary
 from ..services.ai import summarize as ai_summarize, get_client, get_chat_client
@@ -15,7 +15,10 @@ from ..services.auto_quiz_generator import AutoQuizGenerator
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/classes", tags=["classes"], dependencies=[Depends(api_key_guard)])
+# User endpoints are gated per-endpoint with require_role(...) + ownership.
+# The 3 machine-to-machine WORKER endpoints (transcript-doc, summarize, {id}/summarize)
+# carry Depends(api_key_guard) explicitly — they have no user token.
+router = APIRouter(prefix="/classes", tags=["classes"])
 
 # ---------- helpers ----------
 def _today_iso() -> str:
@@ -57,7 +60,7 @@ async def _get_or_create_daily(db, *, tenant: str, class_no: int, section: str, 
 
 # ---------- existing endpoints (fixed) ----------
 @router.post("/daily", response_model=DailyClass, status_code=201)
-async def create_daily(payload: DailyClass, tenant: str = Depends(get_tenant)):
+async def create_daily(payload: DailyClass, tenant: str = Depends(get_tenant), user: CurrentUser = Depends(require_role("teacher", "admin"))):
     db = await get_db()
     # Ensure tenant from header overrides or is set if missing in payload (though payload has it mandatory now)
     # Actually, DailyClass has tenant mandatory. The client should send it in body OR we override it.
@@ -71,7 +74,7 @@ async def create_daily(payload: DailyClass, tenant: str = Depends(get_tenant)):
 
 
 @router.post("/daily/{daily_id}/summarize", response_model=Summary)
-async def summarize_daily(daily_id: str, tenant: str = Depends(get_tenant)):
+async def summarize_daily(daily_id: str, tenant: str = Depends(get_tenant), _: bool = Depends(api_key_guard)):
     db = await get_db()
     if not ObjectId.is_valid(daily_id) or not await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant}):
         raise HTTPException(status_code=404, detail="Daily class not found")
@@ -93,8 +96,10 @@ async def list_daily_classes(
     date: str | None = None,
     student_id: str | None = None,
     demo: bool = False,
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
+    assert_can_access_student(user, student_id)
     db = await get_db()
     query = {"tenant": tenant, "class_no": class_no, "section": section}
     if demo and not settings.is_production():
@@ -218,14 +223,15 @@ def _validate_blocks(data) -> list[dict]:
     return cleaned
 
 
-@router.post("/daily/test-summary")
-async def test_generate_summary(
+@router.post("/daily/regenerate-summary")
+async def regenerate_daily_summary(
     subject: str = Query(None, description="e.g. Science, Maths, English"),
     chapter_number: int = Query(1, description="Chapter number (only used when daily_id is not provided)"),
     class_no: int = Query(7, description="Class number"),
     section: str = Query("A"),
     daily_id: str | None = Query(None, description="If provided, regenerate summary for this doc using its own topic"),
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("teacher", "admin")),
 ):
     """
     Regenerate structured summary blocks for a classes_daily document.
@@ -390,6 +396,7 @@ async def generate_daily_mindmap(
     daily_id: str = Query(..., description="classes_daily document id"),
     force: bool = Query(False, description="Regenerate even if a mind map is cached"),
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """
     Hierarchical mind-map tree for a class, built from its summary_blocks
@@ -458,6 +465,7 @@ class SummarizeRequest(BaseModel):
 @router.post("/daily/{daily_id}/transcript")
 async def add_manual_transcript(
     daily_id: str, payload: ManualTranscript, tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("teacher", "admin")),
 ):
     """Manually stamp a transcript for a daily class (keyed by daily_id) — the same
     `transcripts` collection the story/summary read. Use for demos without audio."""
@@ -486,7 +494,7 @@ class DailyTranscriptDoc(BaseModel):
 
 
 @router.post("/daily/transcript-doc")
-async def create_daily_transcript_doc(req: DailyTranscriptDoc, tenant: str = Depends(get_tenant)):
+async def create_daily_transcript_doc(req: DailyTranscriptDoc, tenant: str = Depends(get_tenant), _: bool = Depends(api_key_guard)):
     """Insert a daily_transcripts doc the CORRECT way — with the worker's composite
     string `_id` ({schoolId}_{classId}_{subject}_{timestamp}) — so manual docs are
     consistent with audio-pipeline docs. Returns the `transcript_id` to summarize with."""
@@ -506,6 +514,7 @@ async def create_daily_transcript_doc(req: DailyTranscriptDoc, tenant: str = Dep
 async def daily_summarize(
     req: SummarizeRequest = Body(default=SummarizeRequest()),
     tenant: str = Depends(get_tenant),
+    _: bool = Depends(api_key_guard),
 ):
     """Unified summary entry. Two modes:
 
@@ -629,7 +638,8 @@ async def generate_tryit_widget(
     chapter_number: int = Query(1),
     class_no: int = Query(7),
     section: str = Query("A"),
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("teacher", "admin")),
 ):
     """Generate a Try It Yourself widget from curriculum data and stamp into classes_daily."""
     import json as json_mod
@@ -714,9 +724,12 @@ async def get_comic_story(
     daily_id: str,
     student_id: str | None = Query(None),
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """
-    Fetch (or generate and cache) the animated comic story for a daily class.
+    Fetch (or generate and cache) the animated comic story for a daily class."""
+    assert_can_access_student(user, student_id)
+    """
     Results are stored in the comic_stories collection.
     """
     if not ObjectId.is_valid(daily_id):
@@ -781,8 +794,10 @@ async def update_comic_progress(
     panels_read: int = Body(...),
     completed: bool = Body(False),
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """Track a student's reading progress through the animated comic story."""
+    assert_can_access_student(user, student_id)
     if not ObjectId.is_valid(daily_id):
         raise HTTPException(status_code=400, detail="Invalid daily_id")
 
@@ -828,7 +843,7 @@ class CompareRequest(BaseModel):
 
 
 @router.post("/compare/generate")
-async def generate_provider_comparison(req: CompareRequest, tenant: str = Depends(get_tenant)):
+async def generate_provider_comparison(req: CompareRequest, tenant: str = Depends(get_tenant), user: CurrentUser = Depends(require_role("admin"))):
     """
     Internal eval: generate a summary + story from EACH transcription provider
     (faster_whisper / sarvam / gemini), holding topic + NCERT context constant.
@@ -850,7 +865,7 @@ async def generate_provider_comparison(req: CompareRequest, tenant: str = Depend
 
 
 @router.get("/compare")
-async def get_provider_comparison(daily_id: str | None = None, transcript_id: str | None = None):
+async def get_provider_comparison(daily_id: str | None = None, transcript_id: str | None = None, user: CurrentUser = Depends(require_role("admin"))):
     """Return a cached provider comparison by daily_id or transcript_id."""
     from app.services.provider_comparison_service import get_comparison
     doc = await get_comparison(daily_id=daily_id, transcript_id=transcript_id)
@@ -873,8 +888,10 @@ async def get_existing_story(
     daily_id:   str,
     student_id: str,
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """Check cache for an existing generated story. Returns story or null."""
+    assert_can_access_student(user, student_id)
     db = await get_db()
     doc = await db.story_generations.find_one(
         {"daily_id": daily_id, "student_id": student_id, "tenant": tenant},
@@ -893,8 +910,10 @@ async def get_existing_story(
 async def generate_story_endpoint(
     req: StoryRequest,
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """Generate (or return cached) animated comic story for a daily class."""
+    assert_can_access_student(user, req.student_id)
     db = await get_db()
 
     if not req.force:
@@ -990,8 +1009,10 @@ async def get_existing_guru_story(
     daily_id:   str,
     student_id: str,
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """Check cache for an existing generated Guru-Shishya story. Returns story or null."""
+    assert_can_access_student(user, student_id)
     db = await get_db()
     doc = await db.guru_shishya_stories.find_one(
         {"daily_id": daily_id, "student_id": student_id, "tenant": tenant},
@@ -1010,8 +1031,10 @@ async def get_existing_guru_story(
 async def generate_guru_story_endpoint(
     req: GuruStoryRequest,
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """Generate (or return cached) Guru-Shishya dialogue story for a daily class."""
+    assert_can_access_student(user, req.student_id)
     db = await get_db()
 
     if not req.force:
@@ -1107,7 +1130,7 @@ class SilfStoryRequest(BaseModel):
 
 
 @router.get("/silf-story/formats")
-async def list_silf_formats():
+async def list_silf_formats(user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin"))):
     """The narrative formats a student can choose from (id + label + description)."""
     from app.services.silf_story_service import FORMATS, resolve_format
     descriptions = {
@@ -1138,8 +1161,9 @@ async def _resolve_chapter_key(db, *, class_no: int, subject: str, override: str
 
 
 @router.get("/silf-story")
-async def get_existing_silf_story(daily_id: str, student_id: str, narrative_format: str | None = None, tenant: str = Depends(get_tenant)):
+async def get_existing_silf_story(daily_id: str, student_id: str, narrative_format: str | None = None, tenant: str = Depends(get_tenant), user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin"))):
     """Check cache for an existing SILF story (optionally for a specific format)."""
+    assert_can_access_student(user, student_id)
     db = await get_db()
     q = {"daily_id": daily_id, "student_id": student_id, "tenant": tenant}
     if narrative_format:
@@ -1159,8 +1183,10 @@ async def get_existing_silf_story(daily_id: str, student_id: str, narrative_form
 async def generate_silf_story_endpoint(
     req: SilfStoryRequest,
     tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
     """Generate (or return cached) SILF revision story grounded in real NCERT figures."""
+    assert_can_access_student(user, req.student_id)
     db = await get_db()
 
     if not ObjectId.is_valid(req.daily_id):

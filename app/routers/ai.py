@@ -5,14 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from ..core.security import get_tenant
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from ..core.security import api_key_guard
+from ..core.security import api_key_guard, require_role
 from ..db.mongo import get_db
 from ..models.schemas import Story, ContentPrefs
 from ..services.ai import get_client, get_gemini_client
 from ..services.rag import answer_with_rag
 from ..core.config import settings
 
-router = APIRouter(prefix="/ai", tags=["ai"], dependencies=[Depends(api_key_guard)])
+router = APIRouter(prefix="/ai", tags=["ai"], dependencies=[Depends(require_role("student", "parent", "teacher", "admin"))])
 
 
 # ─── TTS ──────────────────────────────────────────────────────────────────────

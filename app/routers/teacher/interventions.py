@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
-from app.core.security import get_tenant
+from app.core.security import get_tenant, require_role
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_role("teacher", "admin"))])
 
 
 class InterventionRow(BaseModel):

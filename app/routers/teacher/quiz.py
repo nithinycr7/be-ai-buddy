@@ -1,12 +1,12 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Body
 from app.db.mongo import get_db
-from app.core.security import get_tenant
+from app.core.security import get_tenant, require_role
 from app.services.manual_quiz_service import ManualQuizService
 from pydantic import BaseModel
 from typing import List, Optional
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_role("teacher", "admin"))])
 
 class CustomQuizRequest(BaseModel):
     source: str = "custom" # custom | textbook

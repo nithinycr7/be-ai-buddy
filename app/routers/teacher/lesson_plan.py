@@ -4,11 +4,11 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from ...db.mongo import get_db
-from ...core.security import get_tenant
+from ...core.security import get_tenant, require_role
 from app.services.teacher.lesson_plan import LessonPlanService
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/lesson-plans", tags=["Lesson Plans"])
+router = APIRouter(prefix="/lesson-plans", tags=["Lesson Plans"], dependencies=[Depends(require_role("teacher", "admin"))])
 # Force reload
 
 class GenerateRequest(BaseModel):

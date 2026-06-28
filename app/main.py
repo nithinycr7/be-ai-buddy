@@ -3,12 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .db.mongo import init_indexes
-from .routers import students, classes, ai, admin, question, chat, progress, daily_quiz, leaderboard, audio_upload, ncert, intervention
+from .routers import students, classes, ai, admin, chat, progress, daily_quiz, leaderboard, audio_upload, ncert, intervention, auth, devices
 from .routers.teacher import lesson_plan, quiz as teacher_quiz, insights as teacher_insights, interventions as teacher_interventions
 
 from .db.sqlite_db import init_learning_db
-from .routers import students, classes, quizzes, ai, admin, question,quiz,chat, progress
-from .routers.teacher import lesson_plan
 from .routers.learning_engine import router as learning_engine_router
 from .routers.engine import router as engine_router
 
@@ -20,21 +18,26 @@ logging.basicConfig(
 
 app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
 
+# CORS — locked to known origins. Auth uses bearer tokens (not cookies), so we
+# don't need credentialed CORS. In dev we allow any localhost port + the
+# Capacitor app scheme; in prod only the configured origins.
+_cors_origins = [o.rstrip("/") for o in settings.CORS_ORIGINS] + ["capacitor://localhost"]
 app.add_middleware(
     CORSMiddleware,
-    #allow_origins=settings.CORS_ORIGINS,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_origin_regex=None if settings.is_production() else r"^(http://localhost(:\d+)?|capacitor://localhost)$",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Routers
+app.include_router(auth.router, prefix=settings.API_PREFIX)
+app.include_router(devices.router, prefix=settings.API_PREFIX)
 app.include_router(students.router, prefix=settings.API_PREFIX)
 app.include_router(classes.router, prefix=settings.API_PREFIX)
 app.include_router(ai.router, prefix=settings.API_PREFIX)
 app.include_router(admin.router, prefix=settings.API_PREFIX)
-app.include_router(question.router, prefix=settings.API_PREFIX)
 app.include_router(chat.router, prefix=settings.API_PREFIX)
 app.include_router(progress.router, prefix=settings.API_PREFIX)
 app.include_router(lesson_plan.router, prefix=settings.API_PREFIX)

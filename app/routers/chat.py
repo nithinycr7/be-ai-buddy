@@ -1,12 +1,13 @@
 from __future__ import annotations
 from typing import List, Literal, Optional, AsyncGenerator
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from ..core.config import settings
+from ..core.security import require_role
 from ..services.ai import get_client  # you already have this in ai.py
 
-router = APIRouter(prefix=f"/ai", tags=["ai.chat"])
+router = APIRouter(prefix=f"/ai", tags=["ai.chat"], dependencies=[Depends(require_role("student", "teacher", "admin", "parent"))])
 
 # ----- Schemas -----
 Role = Literal["system", "user", "assistant"]

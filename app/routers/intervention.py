@@ -12,11 +12,16 @@ which the teacher dashboard reads.
 from datetime import datetime
 from typing import Any, Dict, List
 
-from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 
-from ..core.security import api_key_guard, get_tenant
-from ..db.mongo import get_db
+from ..core.security import get_tenant, require_role, get_current_user, CurrentUser, assert_can_access_student
+from ..db.repositories import (
+    DailyClassRepository, get_daily_repo,
+    QuizRepository, get_quiz_repo,
+    QuizAttemptRepository, get_quiz_attempt_repo,
+    InterventionRepository, get_intervention_repo,
+)
+from ..db.repositories.base import InvalidObjectId
 from ..models.schemas import (
     AnalyzeInterventionRequest,
     InterventionAnalyzeResponse,
@@ -26,7 +31,7 @@ from ..models.schemas import (
 from ..services.intervention_engine import generate_intervention
 
 router = APIRouter(prefix="/intervention", tags=["intervention"],
-                   dependencies=[Depends(api_key_guard)])
+                   dependencies=[Depends(require_role("student", "parent", "teacher", "admin"))])
 
 # 3-tier thresholds (mastery %, 0-100)
 MASTERED_THRESHOLD = 80.0
@@ -58,23 +63,29 @@ def _tier_for(score: float) -> str:
 
 @router.post("/analyze", response_model=InterventionAnalyzeResponse)
 async def analyze(request: AnalyzeInterventionRequest,
-                  tenant: str = Depends(get_tenant)):
+                  quizzes: QuizRepository = Depends(get_quiz_repo),
+                  daily: DailyClassRepository = Depends(get_daily_repo),
+                  attempts: QuizAttemptRepository = Depends(get_quiz_attempt_repo),
+                  interventions: InterventionRepository = Depends(get_intervention_repo),
+                  user: CurrentUser = Depends(get_current_user)):
     """Analyse the latest quiz attempt; mastered students get a no-op response,
     everyone else gets a generated micro-intervention + 3 verification questions."""
-    db = await get_db()
+    assert_can_access_student(user, request.student_id)
 
-    quiz = await db.quizzes.find_one({"_id": ObjectId(request.quiz_id), "tenant": tenant})
+    try:
+        quiz = await quizzes.get(request.quiz_id)
+    except InvalidObjectId:
+        raise HTTPException(status_code=400, detail="Invalid quiz_id")
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
     # Idempotent: if we already analysed this (student, daily, quiz), reuse it
     # rather than regenerating (avoids LLM cost and never wipes a finished record).
-    existing = await db.student_interventions.find_one({
-        "student_id": request.student_id,
-        "daily_id": request.daily_id,
-        "quiz_id": request.quiz_id,
-        "tenant": tenant,
-    })
+    existing = await interventions.find_existing(
+        student_id=request.student_id,
+        daily_id=request.daily_id,
+        quiz_id=request.quiz_id,
+    )
     if existing:
         if existing.get("tier") == "mastered":
             return InterventionAnalyzeResponse(
@@ -102,14 +113,8 @@ async def analyze(request: AnalyzeInterventionRequest,
             )
 
     # Latest completed attempt for this student on this quiz
-    attempt = await db.student_quiz_attempts.find_one(
-        {
-            "quiz_id": request.quiz_id,
-            "student_id": request.student_id,
-            "completed_at": {"$ne": None},
-            "tenant": tenant,
-        },
-        sort=[("completed_at", -1)],
+    attempt = await attempts.latest_completed(
+        quiz_id=request.quiz_id, student_id=request.student_id
     )
 
     questions = quiz.get("questions", [])
@@ -139,15 +144,17 @@ async def analyze(request: AnalyzeInterventionRequest,
     tier = _tier_for(initial_score)
 
     now = datetime.utcnow().isoformat()
-    daily = await db.classes_daily.find_one({"_id": ObjectId(request.daily_id), "tenant": tenant})
-    date_str = daily.get("date") if daily else None
+    try:
+        daily_doc = await daily.get(request.daily_id)
+    except InvalidObjectId:
+        daily_doc = None
+    date_str = daily_doc.get("date") if daily_doc else None
 
     base_record = {
         "student_id": request.student_id,
         "daily_id": request.daily_id,
         "quiz_id": request.quiz_id,
         "attempt_id": str(attempt["_id"]) if attempt else None,
-        "tenant": tenant,
         "date": date_str,
         "class_no": quiz.get("class_no"),
         "section": quiz.get("section"),
@@ -172,10 +179,9 @@ async def analyze(request: AnalyzeInterventionRequest,
             "status": "mastered",
             "completed_at": now,
         }
-        await db.student_interventions.update_one(
-            {"student_id": request.student_id, "daily_id": request.daily_id,
-             "quiz_id": request.quiz_id},
-            {"$set": record}, upsert=True,
+        await interventions.upsert_by_keys(
+            student_id=request.student_id, daily_id=request.daily_id,
+            quiz_id=request.quiz_id, doc=record,
         )
         return InterventionAnalyzeResponse(
             intervention_id=None, tier="mastered", topic=quiz.get("topic"),
@@ -203,17 +209,16 @@ async def analyze(request: AnalyzeInterventionRequest,
         "status": "pending",
         "completed_at": None,
     }
-    result = await db.student_interventions.update_one(
-        {"student_id": request.student_id, "daily_id": request.daily_id,
-         "quiz_id": request.quiz_id},
-        {"$set": record}, upsert=True,
+    result = await interventions.upsert_by_keys(
+        student_id=request.student_id, daily_id=request.daily_id,
+        quiz_id=request.quiz_id, doc=record,
     )
     if result.upserted_id:
         intervention_id = str(result.upserted_id)
     else:
-        existing = await db.student_interventions.find_one(
-            {"student_id": request.student_id, "daily_id": request.daily_id,
-             "quiz_id": request.quiz_id, "tenant": tenant})
+        existing = await interventions.find_existing(
+            student_id=request.student_id, daily_id=request.daily_id,
+            quiz_id=request.quiz_id)
         intervention_id = str(existing["_id"])
 
     # Public verification questions (strip the answers)
@@ -239,14 +244,16 @@ async def analyze(request: AnalyzeInterventionRequest,
 
 @router.post("/verify", response_model=VerifyInterventionResponse)
 async def verify(request: VerifyInterventionRequest,
-                 tenant: str = Depends(get_tenant)):
+                 interventions: InterventionRepository = Depends(get_intervention_repo),
+                 user: CurrentUser = Depends(get_current_user)):
     """Score the verification questions and compute the learning gain."""
-    db = await get_db()
-
-    record = await db.student_interventions.find_one(
-        {"_id": ObjectId(request.intervention_id), "tenant": tenant})
+    try:
+        record = await interventions.get(request.intervention_id)
+    except InvalidObjectId:
+        raise HTTPException(status_code=400, detail="Invalid intervention_id")
     if not record:
         raise HTTPException(status_code=404, detail="Intervention not found")
+    assert_can_access_student(user, record.get("student_id"))
 
     vqs = record.get("verification_questions", [])
     total = len(vqs)
@@ -275,7 +282,7 @@ async def verify(request: VerifyInterventionRequest,
     status = "needs_teacher_support" if verification_score < SUPPORT_THRESHOLD else "improved"
 
     now = datetime.utcnow().isoformat()
-    await db.student_interventions.update_one(
+    await interventions.update_one(
         {"_id": record["_id"]},
         {"$set": {
             "verification_score": verification_score,

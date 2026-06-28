@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from fastapi import APIRouter, Depends, Query, HTTPException
 
-from app.core.security import api_key_guard, get_tenant
+from app.core.security import api_key_guard, get_tenant, require_role
 from app.models.learning_engine_schemas import LearnRequest, LearnResponse, ConceptSearchResult
 from app.services.learning_engine.concept_detector import detect_concept
 from app.services.learning_engine.mode_selector import select_mode, get_all_modes
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/learn",
     tags=["learning-engine"],
-    dependencies=[Depends(api_key_guard)],
+    dependencies=[Depends(require_role("student", "teacher", "admin"))],
 )
 
 

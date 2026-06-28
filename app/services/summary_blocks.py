@@ -1,7 +1,7 @@
 """
 Transcript-grounded summary-blocks generation → classes_daily.summary_blocks.
 
-This reuses the EXACT approved format from the `test-summary` endpoint (same
+This reuses the EXACT approved format from the `regenerate-summary` endpoint (same
 SUMMARY_PROMPT + _validate_blocks, lazily imported from the router so there is a
 single source of truth) — but now grounds the summary in the teacher's lecture
 transcript + the ingested NCERT chapter text, and stamps the structured blocks

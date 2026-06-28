@@ -22,6 +22,34 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "changeme"
     JWT_ALG: str = "HS256"
 
+    # Auth — tokens (SPEC §5). Access is short; refresh is long + rotating.
+    ACCESS_TOKEN_TTL_MIN: int = 30
+    REFRESH_TOKEN_TTL_DAYS: int = 60          # SPEC §12.6 — "after session end auto refresh"
+    JWT_ISSUER: str = "mymedha-lxp"
+
+    # Auth — OTP (parent phone login, SPEC §3.3 / §9).
+    OTP_LENGTH: int = 6
+    OTP_TTL_MIN: int = 5
+    OTP_MAX_ATTEMPTS: int = 5
+    # In non-prod we have no SMS provider, so echo the OTP back / log it for testing.
+    OTP_DEV_ECHO: bool = True
+
+    # Auth — student/child credentials (SPEC §3.1 / §3.5).
+    STUDENT_PIN_LENGTH: int = 4               # school-device path
+    CHILD_PIN_LENGTH: int = 4                 # family-mode soft sibling lock
+    LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+    LOGIN_LOCKOUT_MIN: int = 15
+
+    # Auth — device pairing (trusted learning device). One-time grant, rendered
+    # as QR + numeric code; short-lived + single-use.
+    PAIRING_CODE_LENGTH: int = 6
+    PAIRING_TTL_MIN: int = 5
+
+    # Auth — step-up (AAL): sensitive parent actions (pair device, settings,
+    # recovery) require a *fresh* strong auth within this window; otherwise the
+    # parent must re-verify OTP.
+    FRESH_AUTH_WINDOW_MIN: int = 10
+
     # Azure OpenAI
     AZURE_OPENAI_ENDPOINT: str = ""
     AZURE_OPENAI_API_KEY: str = ""

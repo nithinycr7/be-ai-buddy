@@ -1,8 +1,16 @@
 """Quick script to insert quiz data into MongoDB"""
 import asyncio
+import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URI = "mongodb+srv://aibuddymongo:Team%40123@aibuddy.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+MONGO_URI = os.environ.get("MONGODB_URI")
+if not MONGO_URI:
+    raise SystemExit("Set MONGODB_URI (e.g. in .env) before running this script.")
 
 async def insert_quiz():
     client = AsyncIOMotorClient(MONGO_URI)

@@ -4,11 +4,19 @@ Run with: python populate_mock_data.py
 """
 
 import asyncio
+import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, date, timedelta
 
-# MongoDB connection
-MONGO_URI = "mongodb+srv://aibuddymongo:Team%40123@aibuddy.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"
+# MongoDB connection — read from env / .env, never hardcode a credential.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+MONGO_URI = os.environ.get("MONGODB_URI")
+if not MONGO_URI:
+    raise SystemExit("Set MONGODB_URI (e.g. in .env) before running this script.")
 
 async def populate_data():
     client = AsyncIOMotorClient(MONGO_URI)

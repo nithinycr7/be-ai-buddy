@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
-from ..core.security import api_key_guard, get_tenant
+from ..core.security import api_key_guard, get_tenant, require_role, get_current_user, CurrentUser, assert_can_access_student
 from ..db.mongo import get_db
 from ..models.schemas import (
     Quiz, QuizQuestion, StudentQuizAttempt, StreakTracking, QuizAnalytics,
@@ -16,7 +16,7 @@ from ..models.schemas import (
 )
 from ..services.auto_quiz_generator import AutoQuizGenerator
 
-router = APIRouter(prefix="/daily-quiz", tags=["daily-quiz"], dependencies=[Depends(api_key_guard)])
+router = APIRouter(prefix="/daily-quiz", tags=["daily-quiz"], dependencies=[Depends(require_role("student", "parent", "teacher", "admin"))])
 
 
 # ============================================
@@ -53,7 +53,8 @@ class QuizSubmissionResponse(BaseModel):
 @router.post("/generate", response_model=Quiz)
 async def generate_daily_quiz(
     request: GenerateQuizRequest,
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(require_role("teacher", "admin")),
 ):
     """
     Generate quiz for a daily class
@@ -88,8 +89,10 @@ async def generate_daily_quiz(
 async def get_daily_quiz(
     daily_id: str,
     student_id: Optional[str] = None,
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(get_current_user),
 ):
+    assert_can_access_student(user, student_id)
     """Get quiz for a daily class"""
     db = await get_db()
     
@@ -138,8 +141,10 @@ async def get_daily_quiz(
 @router.post("/verify-answer", response_model=AnswerVerificationResponse)
 async def verify_answer(
     request: AnswerVerificationRequest,
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(get_current_user),
 ):
+    assert_can_access_student(user, request.student_id)
     """
     Securely verify a single answer
     - attempt_number=1: If wrong, returns hint (if available)
@@ -237,8 +242,10 @@ async def verify_answer(
 @router.post("/submit", response_model=QuizSubmissionResponse)
 async def submit_daily_quiz(
     request: SubmitQuizRequest,
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(get_current_user),
 ):
+    assert_can_access_student(user, request.student_id)
     """
     Submit quiz responses and calculate score/XP
     - Uses weighted scoring (Easy=1, Med=2, Hard=3)
@@ -445,9 +452,11 @@ async def submit_daily_quiz(
 @router.get("/streak/{student_id}", response_model=StreakTracking)
 async def get_student_streak(
     student_id: str,
-    tenant: str = Depends(get_tenant)
+    tenant: str = Depends(get_tenant),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Get student's streak and XP data"""
+    assert_can_access_student(user, student_id)
     db = await get_db()
     
     streak = await db.streak_tracking.find_one({

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends
-from ..core.security import api_key_guard, get_tenant
+from ..core.security import api_key_guard, get_tenant, require_role
 from ..db.mongo import get_db
 
-router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(api_key_guard)])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_role("admin"))])
 
 @router.get("/teacher-performance")
 async def teacher_performance(teacher_email: str, tenant: str = Depends(get_tenant)):

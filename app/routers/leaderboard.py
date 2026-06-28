@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from ..core.security import api_key_guard, get_tenant
+from ..core.security import api_key_guard, get_tenant, require_role
 from ..db.mongo import get_db
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/leaderboard", tags=["leaderboard"], dependencies=[Depends(api_key_guard)])
+router = APIRouter(prefix="/leaderboard", tags=["leaderboard"], dependencies=[Depends(require_role("student", "parent", "teacher", "admin"))])
 
 class LeaderboardEntry(BaseModel):
     rank: int

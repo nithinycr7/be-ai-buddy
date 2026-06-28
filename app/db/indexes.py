@@ -51,3 +51,60 @@ async def ensure(db: AsyncIOMotorDatabase):
 
     # Capture metadata — canonical chapter/topic ids stashed at audio-upload time
     await db.capture_meta.create_index([("tenant", 1), ("class_no", 1), ("section", 1), ("subject", 1)], name="ux_capture_meta_class", unique=True)
+
+    # --- Auth / identity (SPEC §4) -------------------------------------------
+    # users — one collection, all roles. Identifiers are sparse (students may
+    # have none of email/phone), so uniqueness is partial on field presence.
+    await db.users.create_index(
+        [("tenant", 1), ("email", 1)], unique=True, name="ux_users_tenant_email",
+        partialFilterExpression={"email": {"$type": "string"}},
+    )
+    await db.users.create_index(
+        [("tenant", 1), ("phone", 1)], unique=True, name="ux_users_tenant_phone",
+        partialFilterExpression={"phone": {"$type": "string"}},
+    )
+    await db.users.create_index(
+        [("tenant", 1), ("student_code", 1)], unique=True, name="ux_users_tenant_student_code",
+        partialFilterExpression={"student_code": {"$type": "string"}},
+    )
+    await db.users.create_index(
+        [("tenant", 1), ("student_id", 1)], unique=True, name="ux_users_tenant_student_id",
+        partialFilterExpression={"student_id": {"$type": "string"}},
+    )
+    await db.users.create_index([("tenant", 1), ("role", 1)], name="ix_users_tenant_role")
+
+    # tenants (schools)
+    await db.tenants.create_index("tenant", unique=True, name="ux_tenants_tenant")
+    await db.tenants.create_index("school_code", unique=True, name="ux_tenants_school_code")
+
+    # parent_links (parent ↔ student)
+    await db.parent_links.create_index(
+        [("tenant", 1), ("parent_id", 1), ("student_id", 1)], unique=True, name="ux_parent_link",
+    )
+    await db.parent_links.create_index([("tenant", 1), ("parent_id", 1)], name="ix_parent_link_parent")
+    await db.parent_links.create_index([("tenant", 1), ("student_id", 1)], name="ix_parent_link_student")
+
+    # sessions (refresh tokens — rotation + revocation)
+    await db.sessions.create_index("refresh_token_hash", unique=True, name="ux_session_refresh_hash")
+    await db.sessions.create_index([("tenant", 1), ("user_id", 1)], name="ix_session_user")
+
+    # otp_codes — TTL auto-cleans expired codes
+    await db.otp_codes.create_index([("tenant", 1), ("phone", 1), ("created_at", -1)], name="ix_otp_lookup")
+    await db.otp_codes.create_index("expires_at", expireAfterSeconds=0, name="ttl_otp_expiry")
+
+    # audit_log
+    await db.audit_log.create_index([("tenant", 1), ("at", -1)], name="ix_audit_tenant_at")
+
+    # devices — trusted learning devices paired to a family (parent account)
+    await db.devices.create_index([("tenant", 1), ("device_id", 1)], unique=True, name="ux_device_id")
+    await db.devices.create_index([("tenant", 1), ("parent_id", 1)], name="ix_device_parent")
+
+    # pairing_grants — one-time device-pairing grant (QR + numeric code), TTL'd
+    await db.pairing_grants.create_index("code", name="ix_pairing_code")
+    await db.pairing_grants.create_index("qr_token_hash", name="ix_pairing_qr")
+    await db.pairing_grants.create_index("expires_at", expireAfterSeconds=0, name="ttl_pairing_expiry")
+
+    # invites — parent invitation links (roster import → SMS claim)
+    await db.invites.create_index("token_hash", unique=True, name="ux_invite_token")
+    await db.invites.create_index([("tenant", 1), ("student_id", 1)], name="ix_invite_student")
+    await db.invites.create_index([("tenant", 1), ("parent_phone", 1)], name="ix_invite_phone")
