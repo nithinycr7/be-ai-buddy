@@ -18,5 +18,13 @@ class StudentRepository(BaseRepository):
     async def list(self, *, skip: int = 0, limit: int = 50) -> list:
         return await self.find_many({}, skip=skip, limit=limit)
 
+    async def find_by_ids(self, sids: list) -> list:
+        """Resolve student docs by a mix of external student_id and (24-char) _id."""
+        oid_candidates = [s for s in sids if len(str(s)) == 24]
+        return await self.find_many({"$or": [
+            {"student_id": {"$in": sids}},
+            {"_id": {"$in": oid_candidates}},
+        ]}, limit=300)
+
     async def set_persona(self, student_id: str, persona: dict) -> None:
         await self.update_one({"student_id": student_id}, {"$set": {"story_persona": persona}})

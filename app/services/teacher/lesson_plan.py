@@ -514,3 +514,11 @@ class LessonPlanService:
             "today": today_plans,
             "thisWeek": this_week_plans
         }
+
+# ── DI provider (router → service) ─────────────────────────────────────────────
+from fastapi import Depends as _Depends  # noqa: E402
+from ...db.mongo import get_db as _get_db  # noqa: E402
+
+
+def get_lesson_plan_service(db=_Depends(_get_db)) -> "LessonPlanService":
+    return LessonPlanService(db)

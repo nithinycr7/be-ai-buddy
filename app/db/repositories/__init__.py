@@ -24,7 +24,10 @@ from .content import (
     ComicStoryRepository, GuruStoryRepository, SilfStoryRepository,
     StoryGenerationRepository, SummaryRepository,
 )
-from .curriculum import CurriculumRepository, NcertContentRepository
+from .curriculum import (
+    CurriculumRepository, NcertContentRepository,
+    NcertTextbookRepository, NcertFigureRepository,
+)
 from .daily import DailyClassRepository
 from .engagement import QuizAnalyticsRepository, StreakRepository
 from .intervention import InterventionRepository
@@ -58,6 +61,8 @@ __all__ = [
     "NcertContentRepository",
     "LeaderboardRepository",
     "SimulationRepository",
+    "NcertTextbookRepository",
+    "NcertFigureRepository",
     # providers
     "get_daily_repo",
     "get_quiz_repo",
@@ -79,6 +84,8 @@ __all__ = [
     "get_ncert_content_repo",
     "get_leaderboard_repo",
     "get_simulation_repo",
+    "get_ncert_textbook_repo",
+    "get_ncert_figure_repo",
 ]
 
 
@@ -111,3 +118,5 @@ get_curriculum_repo = _provider(CurriculumRepository)
 get_ncert_content_repo = _provider(NcertContentRepository)
 get_leaderboard_repo = _provider(LeaderboardRepository)
 get_simulation_repo = _provider(SimulationRepository)
+get_ncert_textbook_repo = _provider(NcertTextbookRepository)
+get_ncert_figure_repo = _provider(NcertFigureRepository)

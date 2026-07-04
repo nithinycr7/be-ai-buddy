@@ -26,6 +26,15 @@ class QuizRepository(BaseRepository):
         written by AutoQuizGenerator). Raises InvalidObjectId on malformed input."""
         return await self.find_one({"daily_id": self._oid(daily_id)})
 
+    async def list_recent(self, *, class_no: Optional[int] = None,
+                          subject: Optional[str] = None, limit: int = 50) -> list:
+        q: dict = {}
+        if class_no:
+            q["class_no"] = class_no
+        if subject:
+            q["subject"] = subject
+        return await self.find_many(q, sort=[("created_at", -1)], limit=limit)
+
 
 class QuizResponseRepository(BaseRepository):
     collection = "quiz_responses"
