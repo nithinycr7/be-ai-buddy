@@ -45,6 +45,10 @@ class QuizResponseRepository(BaseRepository):
             sort=[("attempt_number", 1)],
         )
 
+    async def average_score(self) -> Optional[float]:
+        rows = await self.aggregate([{"$group": {"_id": None, "avg": {"$avg": "$score"}}}])
+        return rows[0]["avg"] if rows else None
+
 
 class QuizAttemptRepository(BaseRepository):
     collection = "student_quiz_attempts"
