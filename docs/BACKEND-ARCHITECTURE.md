@@ -56,10 +56,19 @@ HTTPException` in routers, no status codes in services.
 - ✅ `ncert` → `NcertService` (global repos), `chat` → `ChatService` (no data layer),
   and all `teacher/*` (`quiz`/`insights`/`interventions` → services; `lesson_plan` via a
   DI provider). Services under `app/services/teacher/`.
-- ⬜ Remaining `router → db`: `auth`/`devices` (already delegate to
-  `auth_service`/`device_service` — a few `get_db()`/`HTTPException` spots to thin) and
-  `audio_upload` (worker). `engine`/`learning_engine` still raise HTTPException directly.
-  Apply the same pattern when touching these.
+- ✅ `engine` → `EngineService`, `learning_engine` → `LearningEngineService`
+  (+ a SQLite `repository.py` — the engine uses SQLite, not Mongo),
+  `audio_upload` → `AudioIngestService`, `auth`/`devices` thinned (delegate to the
+  functional `auth_service`/`device_service`; db injected via `Depends(get_db)`).
+
+**Every router is now thin**: no router calls `get_db()` imperatively, runs a query,
+or raises `HTTPException`. Two honest caveats:
+1. `auth`/`devices` still *receive* a `db` handle (injected) to pass to their functional
+   services, which themselves still raise `HTTPException` (FastAPI's built-in handler
+   covers it). Fully hiding db + converting those services to domain errors is a larger,
+   security-sensitive follow-up.
+2. The FastAPI `HTTPException` handler stays registered alongside our `AppError` handler,
+   so legacy service-raised `HTTPException`s keep working during the transition.
 - Worker endpoints (`api_key_guard`, no user token) go through the same services;
   the service uses repositories, `db` is injected only to hand to legacy engines
   (AutoQuizGenerator, SummaryService, resolve_grounding, insert_daily_transcript).

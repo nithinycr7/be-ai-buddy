@@ -471,3 +471,21 @@ async def logout(db: AsyncIOMotorDatabase, *, refresh_token: str) -> None:
 
 async def get_children_for_parent(db: AsyncIOMotorDatabase, *, tenant: str, parent_id: str) -> list[dict]:
     return await _get_children(db, tenant=tenant, parent_id=parent_id)
+
+
+def pre_login_tenant(explicit: Optional[str], header: Optional[str]) -> str:
+    """Tenant for pre-login flows (OTP) where there's no token yet (SPEC §3.0)."""
+    tenant = explicit or header
+    if tenant:
+        return tenant
+    if settings.is_production():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tenant required")
+    return "demo-school"
+
+
+async def resolve_tenant_by_code(db: AsyncIOMotorDatabase, *, school_code: str) -> dict:
+    """One-time helper: human school code → tenant the app then remembers (§3.0)."""
+    t = await db.tenants.find_one({"school_code": school_code.strip().upper()})
+    if not t:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="School not found")
+    return {"tenant": t["tenant"], "name": t.get("name"), "board": t.get("board")}
