@@ -1,96 +1,40 @@
 from __future__ import annotations
-# app/routers/classes.py
-import asyncio
-import logging
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
-from datetime import date as dt_date, datetime, timezone
-from pydantic import BaseModel
-from bson import ObjectId
-from app.core.config import settings
-from ..core.security import api_key_guard, get_tenant, require_role, get_current_user, CurrentUser, assert_can_access_student
-from ..db.mongo import get_db  # retained for service handoffs (quiz/summary/mindmap) that take a raw db
+# app/routers/classes.py — HTTP layer only. Logic lives in DailyClassService / ContentService.
+from fastapi import APIRouter, Depends, Body, Query
+
+from ..core.security import api_key_guard, require_role, get_current_user, CurrentUser
 from ..services.content_service import (
     ContentService, get_content_service,
     StoryRequest, GuruStoryRequest, SilfStoryRequest,
 )
+from ..services.daily_class_service import (
+    DailyClassService, get_daily_class_service,
+    ManualTranscript, SummarizeRequest, DailyTranscriptDoc, CompareRequest,
+)
 from ..models.schemas import DailyClass, Summary
-from ..services.ai import summarize as ai_summarize, get_client, get_chat_client
-from ..services.auto_quiz_generator import AutoQuizGenerator
 
-logger = logging.getLogger(__name__)
-
-# User endpoints are gated per-endpoint with require_role(...) + ownership.
-# The 3 machine-to-machine WORKER endpoints (transcript-doc, summarize, {id}/summarize)
-# carry Depends(api_key_guard) explicitly — they have no user token.
+# User endpoints are gated per-endpoint with require_role(...). The 3 machine-to-machine
+# WORKER endpoints (transcript-doc, summarize, {id}/summarize) carry api_key_guard.
 router = APIRouter(prefix="/classes", tags=["classes"])
 
-# ---------- helpers ----------
-def _today_iso() -> str:
-    return dt_date.today().isoformat()
 
-
-async def _eager_generate_quiz(db, daily_id: str, tenant: str) -> None:
-    """Fire-and-forget quiz generation, called after summary save.
-    Auto_generator already handles cache check, so re-runs are no-ops."""
-    try:
-        generator = AutoQuizGenerator(db)
-        quiz = await generator.generate_quiz_for_daily_class(
-            daily_id=daily_id, tenant=tenant, force_regenerate=False
-        )
-        if quiz:
-            logger.info(f"[QUIZ_EAGER] Quiz ready for daily_id={daily_id}")
-        else:
-            logger.warning(f"[QUIZ_EAGER] Generation returned no quiz for daily_id={daily_id}")
-    except Exception as e:
-        logger.error(f"[QUIZ_EAGER] Background generation failed for daily_id={daily_id}: {e}")
-
-async def _get_or_create_daily(db, *, tenant: str, class_no: int, section: str, subject: str, date_str: str | None = None) -> str:
-    d = date_str or _today_iso()
-    existing = await db.classes_daily.find_one({
-        "tenant": tenant, "date": d, "class_no": class_no, "section": section, "subject": subject
-    })
-    if existing:
-        return str(existing["_id"])
-    res = await db.classes_daily.insert_one({
-        "tenant": tenant,
-        "date": d,
-        "class_no": class_no,
-        "section": section,
-        "subject": subject,
-        "topics": [],
-        "summary": None
-    })
-    return str(res.inserted_id)
-
-# ---------- existing endpoints (fixed) ----------
+# ---------- daily class CRUD + summary/mindmap/transcript/widget ----------
 @router.post("/daily", response_model=DailyClass, status_code=201)
-async def create_daily(payload: DailyClass, tenant: str = Depends(get_tenant), user: CurrentUser = Depends(require_role("teacher", "admin"))):
-    db = await get_db()
-    # Ensure tenant from header overrides or is set if missing in payload (though payload has it mandatory now)
-    # Actually, DailyClass has tenant mandatory. The client should send it in body OR we override it.
-    # Better pattern: The API client sends X-Tenant-ID. We set it on the model.
-    data = payload.model_dump(by_alias=True, exclude_none=True)
-    data['tenant'] = tenant
-    res = await db.classes_daily.insert_one(data)
-    payload.id = str(res.inserted_id)
-    payload.tenant = tenant
-    return payload
+async def create_daily(
+    payload: DailyClass,
+    service: DailyClassService = Depends(get_daily_class_service),
+    user: CurrentUser = Depends(require_role("teacher", "admin")),
+):
+    return await service.create_daily(payload)
 
 
 @router.post("/daily/{daily_id}/summarize", response_model=Summary)
-async def summarize_daily(daily_id: str, tenant: str = Depends(get_tenant), _: bool = Depends(api_key_guard)):
-    db = await get_db()
-    if not ObjectId.is_valid(daily_id) or not await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant}):
-        raise HTTPException(status_code=404, detail="Daily class not found")
-
-    t = await db.transcripts.find_one({"daily_id": daily_id})
-    base = t["text"] if t else ""
-    d = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
-    if d and d.get("summary"):
-        base = d["summary"] + "\n" + base
-    text = await ai_summarize(base) if base else ""
-    res = await db.summaries.insert_one({"daily_id": daily_id, "text": text, "tenant": tenant})
-    return Summary(id=str(res.inserted_id), daily_id=daily_id, text=text)
+async def summarize_daily(
+    daily_id: str,
+    service: DailyClassService = Depends(get_daily_class_service),
+    _: bool = Depends(api_key_guard),
+):
+    return await service.summarize_daily(daily_id)
 
 
 @router.get("/daily", response_model=list[DailyClass])
@@ -100,540 +44,70 @@ async def list_daily_classes(
     date: str | None = None,
     student_id: str | None = None,
     demo: bool = False,
-    tenant: str = Depends(get_tenant),
+    service: DailyClassService = Depends(get_daily_class_service),
     user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
-    assert_can_access_student(user, student_id)
-    db = await get_db()
-    query = {"tenant": tenant, "class_no": class_no, "section": section}
-    if demo and not settings.is_production():
-        # Demo mode: return all classes irrespective of date (dev/demo only)
-        pass
-    elif date:
-        query["date"] = date
-    else:
-        # Default: only return today's classes
-        query["date"] = _today_iso()
-
-    cursor = db.classes_daily.find(query).sort("date", -1).limit(50)
-    results = []
-    
-    # Process classes
-    classes = await cursor.to_list(length=50)
-    
-    # If student_id provided, fetch progress
-    progress_map = {}
-    if student_id and classes:
-        daily_ids = [str(c["_id"]) for c in classes]
-        p_cursor = db.student_daily_progress.find({
-            "student_id": student_id,
-            "daily_id": {"$in": daily_ids},
-            "tenant": tenant
-        })
-        async for p in p_cursor:
-            progress_map[p["daily_id"]] = p
-            
-    for doc in classes:
-        if "_id" in doc:
-            doc["_id"] = str(doc["_id"])
-        
-        # Instantiate DailyClass
-        d_obj = DailyClass(**doc)
-        
-        # Inject progress
-        if d_obj.id in progress_map:
-            p = progress_map[d_obj.id]
-            d_obj.completed = p.get("is_complete", False)
-            d_obj.progress = p.get("total_score", 0.0)
-            
-        results.append(d_obj)
-        
-    return results
-
-
-# ---------- TEST: Generate structured JSON summary from curriculum data ----------
-SUMMARY_PROMPT = """You are creating a revision summary for a Class {class_no} student who attended this class today.
-You have two sources. Blend them into ONE confident voice per concept.
-Never show them as separate competing paragraphs.
-
-BLENDING RULES:
-- Use teacher analogies and examples — keep their phrasing
-- Use NCERT for precise facts, formulas, definitions
-- Write ONE explanation per concept that honours both sources naturally
-- If teacher simplified something NCERT states precisely: keep teacher framing, add NCERT precision
-- Never write "teacher said X, NCERT says Y" — student reads ONE clear thing
-
-CLASS LEVEL GUIDE:
-- Class 3-5: Simple everyday words. Max 3 key terms. No formulas.
-- Class 6-7: Simple scientific vocabulary. Max 5 key terms. Basic formulas.
-- Class 8-9: Standard terminology. Concise definitions. Include formulas.
-
-REQUIRED BLOCK ORDER:
-1. concept blocks (2-4) — each must have:
-   {{ "type": "concept", "title": "...", "content": "...", "icon": "<1 emoji that represents this concept visually>",
-      "sources": ["teacher", "ncert"] }}
-   sources options: ["teacher","ncert"] if both used | ["ncert"] if teacher didn't cover it | ["teacher"] if not in NCERT
-
-2. analogy block — REQUIRED. Create a vivid real-world comparison that makes the concept memorable.
-   If the teacher used one, keep their exact words. Otherwise invent a strong one.
-   {{ "type": "analogy", "content": "..." }}
-
-3. formula block — ONLY for Math/Science with an equation:
-   {{ "type": "formula", "label": "The equation", "expression": "...", "note": "..." }}
-
-4. terms block — key vocabulary, always visible with definition:
-   {{ "type": "terms", "items": [{{ "term": "...", "meaning": "..." }}] }}
-
-OPTIONAL additional types (use only if they genuinely fit):
-- "fact":     {{"type":"fact","items":["..."]}}
-- "timeline": {{"type":"timeline","items":[{{"date":"1857","event":"..."}}]}}
-- "rule":     {{"type":"rule","title":"...","content":"...","example":"..."}}
-- "steps":    {{"type":"steps","title":"...","steps":["...","..."]}}
-
-Return ONLY valid JSON. 4-7 blocks total. NEVER include a checkpoint block. NEVER show NCERT quotes separately."""
-
-
-VALID_BLOCK_TYPES = {"concept", "terms", "steps", "analogy", "formula", "fact", "timeline", "rule"}
-
-
-def _validate_blocks(data) -> list[dict]:
-    """Validate and sanitize LLM JSON output. Returns cleaned blocks.
-    Accepts either a top-level list (Gemini often returns this), a {"blocks": [...]}
-    object (Azure/OpenAI), or any dict that nests the list under another key."""
-    if isinstance(data, list):
-        blocks = data
-    elif isinstance(data, dict):
-        blocks = data.get("blocks")
-        if not isinstance(blocks, list):
-            blocks = next((v for v in data.values() if isinstance(v, list)), [])
-    else:
-        blocks = []
-    if not isinstance(blocks, list) or len(blocks) == 0:
-        raise ValueError("No blocks in response")
-
-    cleaned = []
-    for b in blocks[:10]:  # Cap at 10 blocks (5-8 expected, room for teacher_moment + concept pairs)
-        if not isinstance(b, dict) or "type" not in b:
-            continue
-        if b["type"] not in VALID_BLOCK_TYPES:
-            continue
-        cleaned.append(b)
-
-    # Must have at least concept
-    types = {b["type"] for b in cleaned}
-    if "concept" not in types:
-        raise ValueError("Missing required 'concept' block")
-
-    return cleaned
+    return await service.list_daily(
+        class_no=class_no, section=section, date=date,
+        student_id=student_id, demo=demo, requester=user)
 
 
 @router.post("/daily/regenerate-summary")
 async def regenerate_daily_summary(
     subject: str = Query(None, description="e.g. Science, Maths, English"),
-    chapter_number: int = Query(1, description="Chapter number (only used when daily_id is not provided)"),
+    chapter_number: int = Query(1, description="Chapter number (only when daily_id absent)"),
     class_no: int = Query(7, description="Class number"),
     section: str = Query("A"),
-    daily_id: str | None = Query(None, description="If provided, regenerate summary for this doc using its own topic"),
-    tenant: str = Depends(get_tenant),
+    daily_id: str | None = Query(None, description="Regenerate for this doc using its own topic"),
+    service: DailyClassService = Depends(get_daily_class_service),
     user: CurrentUser = Depends(require_role("teacher", "admin")),
 ):
-    """
-    Regenerate structured summary blocks for a classes_daily document.
-
-    When daily_id is given: reads topic/subject/class directly from the document
-    and generates from that — no curriculum chapter lookup needed.
-
-    When daily_id is not given: looks up a curriculum chapter by subject +
-    chapter_number and creates a new row for today.
-    """
-    import json as json_mod
-
-    db = await get_db()
-    client = get_chat_client()   # summary blocks → Gemini (gemini-2.5-flash)
-    prompt_tmpl = SUMMARY_PROMPT
-
-    # ── PATH A: daily_id provided — use the doc's own data ──────────────────
-    if daily_id:
-        if not ObjectId.is_valid(daily_id):
-            raise HTTPException(400, "Invalid daily_id")
-        doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
-        if not doc:
-            raise HTTPException(404, f"classes_daily {daily_id} not found")
-
-        topic_list = [t for t in (doc.get("topics") or []) if t]
-        if not topic_list:
-            raise HTTPException(400, "Document has no topics — set topics before regenerating")
-
-        doc_subject  = doc.get("subject", "Science")
-        doc_class_no = doc.get("class_no", 7)
-        topic_str    = ", ".join(topic_list)
-
-        # Pagedex grounding — scope NCERT to the taught section when possible.
-        from app.services.ncert.retrieval import resolve_grounding
-        grounding = await resolve_grounding(
-            db, class_no=doc_class_no, subject=doc_subject,
-            chapter_key=doc.get("chapter_key"), topics=topic_list,
-            topic_ids=[t for t in (doc.get("topic_ids") or []) if t],
-        )
-        user_content = f"Class {doc_class_no} {doc_subject} — {topic_str}"
-        if grounding["content"]:
-            user_content += (
-                "\n\nNCERT textbook reference (use for precise facts, definitions, formulas):\n"
-                f"{grounding['content'][:4000]}"
-            )
-
-        resp = client.chat.completions.create(
-            model=settings.GEMINI_CHAT_MODEL,
-            messages=[
-                {"role": "system", "content": prompt_tmpl.format(class_no=doc_class_no)},
-                {"role": "user",   "content": user_content}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.3
-        )
-
-        raw = resp.choices[0].message.content
-        try:
-            blocks = _validate_blocks(json_mod.loads(raw))
-        except (json_mod.JSONDecodeError, ValueError) as e:
-            logger.error(f"LLM JSON validation failed: {e}\nRaw: {raw[:500]}")
-            blocks = [{"type": "concept", "title": topic_str, "content": "Summary not available — please try again."}]
-
-        await db.classes_daily.update_one(
-            {"_id": doc["_id"]},
-            {"$set": {"summary_blocks": blocks}}  # topics stay unchanged
-        )
-
-        logger.info(f"Regenerated summary for daily_id={daily_id} topic='{topic_str}'")
-        asyncio.create_task(_eager_generate_quiz(db, daily_id, tenant))
-        return {
-            "status": "ok",
-            "daily_id": daily_id,
-            "subject": doc_subject,
-            "topic": topic_str,
-            "date": doc.get("date"),
-            "blocks_count": len(blocks),
-            "block_types": [b["type"] for b in blocks]
-        }
-
-    # ── PATH B: no daily_id — look up curriculum chapter and upsert today ───
-    if not subject:
-        raise HTTPException(400, "subject is required when daily_id is not provided")
-
-    SUBJECT_FALLBACKS = {
-        "biology": ["Science"], "physics": ["Science"], "chemistry": ["Science"],
-        "history": ["Social Science"], "geography": ["Social Science"], "civics": ["Social Science"],
-        "math": ["Maths"], "mathematics": ["Maths"],
-    }
-
-    chapter = None
-    for s in [subject] + SUBJECT_FALLBACKS.get(subject.lower(), []):
-        chapter = await db.curriculum_chapters.find_one({
-            "class": class_no,
-            "subject": {"$regex": f"^{s}$", "$options": "i"},
-            "chapter_number": chapter_number
-        })
-        if chapter:
-            break
-
-    if not chapter:
-        raise HTTPException(404, f"No curriculum found for class {class_no}, {subject}, chapter {chapter_number}")
-
-    concepts_text = "".join(f"\n- {c.get('name','')}: {c.get('explanation','')}" for c in chapter.get("concepts", []))
-    textbook_content = (
-        f"Chapter: {chapter.get('chapter_title','')}\n"
-        f"Summary: {chapter.get('chapter_summary','')}\n"
-        f"Key Concepts:{concepts_text}\n"
-        f"Formulas/Rules: {', '.join(str(x) for x in chapter.get('key_formulas_or_rules', []))}\n"
-        f"Real World Connections: {', '.join(str(x) for x in chapter.get('real_world_connections', []))}"
-    )
-
-    resp = client.chat.completions.create(
-        model=settings.GEMINI_CHAT_MODEL,
-        messages=[
-            {"role": "system", "content": prompt_tmpl.format(class_no=class_no)},
-            {"role": "user",   "content": f"Class {class_no} {subject} — {chapter.get('chapter_title','')}\n\n{textbook_content}"}
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.3
-    )
-
-    raw = resp.choices[0].message.content
-    try:
-        blocks = _validate_blocks(json_mod.loads(raw))
-    except (json_mod.JSONDecodeError, ValueError) as e:
-        logger.error(f"LLM JSON validation failed: {e}\nRaw: {raw[:500]}")
-        blocks = [
-            {"type": "concept", "title": chapter.get("chapter_title", subject), "content": chapter.get("chapter_summary", "")},
-            {"type": "terms",   "items": [{"term": c.get("name",""), "meaning": c.get("explanation","")[:80]} for c in chapter.get("concepts",[])[:5]]},
-        ]
-
-    topics = [c.get("name", "") for c in chapter.get("concepts", [])[:3]]
-    target_date = _today_iso()
-    result = await db.classes_daily.update_one(
-        {"tenant": tenant, "class_no": class_no, "section": section,
-         "subject": chapter.get("subject", subject), "date": target_date},
-        {"$set": {"tenant": tenant, "class_no": class_no, "section": section,
-                  "subject": chapter.get("subject", subject), "date": target_date,
-                  "topics": topics, "summary_blocks": blocks,
-                  "chapter_key": chapter.get("chapter_key")}},  # carry canonical chapter id
-        upsert=True
-    )
-    result_id = str(result.upserted_id) if result.upserted_id else "updated"
-
-    logger.info(f"Created summary for {subject} ch{chapter_number} -> {result_id}")
-    if result.upserted_id:
-        asyncio.create_task(_eager_generate_quiz(db, result_id, tenant))
-    return {
-        "status": "ok",
-        "daily_id": result_id,
-        "subject": chapter.get("subject", subject),
-        "chapter": chapter.get("chapter_title", ""),
-        "date": target_date,
-        "blocks_count": len(blocks),
-        "block_types": [b["type"] for b in blocks]
-    }
+    """Regenerate structured summary blocks for a classes_daily document."""
+    return await service.regenerate_summary(
+        subject=subject, chapter_number=chapter_number,
+        class_no=class_no, section=section, daily_id=daily_id)
 
 
 @router.post("/daily/mindmap")
 async def generate_daily_mindmap(
     daily_id: str = Query(..., description="classes_daily document id"),
     force: bool = Query(False, description="Regenerate even if a mind map is cached"),
-    tenant: str = Depends(get_tenant),
+    service: DailyClassService = Depends(get_daily_class_service),
     user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
 ):
-    """
-    Hierarchical mind-map tree for a class, built from its summary_blocks
-    (concept titles + key terms). Lazy + cached: generated on first request and
-    stamped onto the classes_daily doc as `mindmap`, so every existing class can
-    get a map without regenerating its summary.
-
-    Returns { "root": str, "branches": [ {label, note?, children?}, ... ] }.
-    """
-    from app.services.mindmap import generate_mindmap
-
-    if not ObjectId.is_valid(daily_id):
-        raise HTTPException(400, "Invalid daily_id")
-
-    db = await get_db()
-    doc = await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant})
-    if not doc:
-        raise HTTPException(404, f"classes_daily {daily_id} not found")
-
-    cached = doc.get("mindmap")
-    if cached and not force:
-        return cached
-
-    blocks = doc.get("summary_blocks") or []
-    topics = [t for t in (doc.get("topics") or []) if t]
-    topic_str = ", ".join(topics) if topics else doc.get("subject", "Today's Topic")
-
-    tree = await generate_mindmap(
-        class_no=doc.get("class_no", 7),
-        subject=doc.get("subject", "Science"),
-        topic=topic_str,
-        summary_blocks=blocks,
-    )
-
-    await db.classes_daily.update_one(
-        {"_id": doc["_id"]}, {"$set": {"mindmap": tree}}
-    )
-    logger.info(f"Generated mind map for daily_id={daily_id} ({len(tree.get('branches', []))} branches)")
-    return tree
-
-
-# ---------- Transcript-grounded summary (manual / demo flow) ----------
-# Drop a transcript in the DB, then generate the approved summary_blocks from it
-# straight into classes_daily — the backup path when there's no audio to record.
-
-class ManualTranscript(BaseModel):
-    text: str
-
-
-class SummarizeRequest(BaseModel):
-    # Either point at an existing daily…
-    daily_id:        str | None = None
-    # …or provide these to create-if-missing (matched by class_no/section/subject/date):
-    class_no:        int | None = None
-    section:         str = "A"
-    subject:         str | None = None
-    date:            str | None = None          # ISO date; defaults to today
-    topics:          list[str] | None = None
-    # transcript source + options
-    transcript_id:   str | None = None          # daily_transcripts _id (audio pipeline)
-    transcript_text: str | None = None          # paste raw transcript directly
-    chapter_key:     str | None = None          # optional NCERT chapter override
-    force:           bool = False               # regenerate even if summary_blocks exist
+    """Hierarchical mind-map tree built from the class's summary_blocks (lazy + cached)."""
+    return await service.generate_mindmap(daily_id=daily_id, force=force)
 
 
 @router.post("/daily/{daily_id}/transcript")
 async def add_manual_transcript(
-    daily_id: str, payload: ManualTranscript, tenant: str = Depends(get_tenant),
+    daily_id: str,
+    payload: ManualTranscript,
+    service: DailyClassService = Depends(get_daily_class_service),
     user: CurrentUser = Depends(require_role("teacher", "admin")),
 ):
-    """Manually stamp a transcript for a daily class (keyed by daily_id) — the same
-    `transcripts` collection the story/summary read. Use for demos without audio."""
-    db = await get_db()
-    if not ObjectId.is_valid(daily_id):
-        raise HTTPException(400, "Invalid daily_id")
-    if not await db.classes_daily.find_one({"_id": ObjectId(daily_id), "tenant": tenant}):
-        raise HTTPException(404, "Daily class not found")
-    now = datetime.now(timezone.utc).isoformat()
-    await db.transcripts.replace_one(
-        {"daily_id": daily_id},
-        {"daily_id": daily_id, "text": payload.text, "source": "manual", "tenant": tenant, "created_at": now},
-        upsert=True,
-    )
-    return {"status": "ok", "daily_id": daily_id, "chars": len(payload.text)}
-
-
-class DailyTranscriptDoc(BaseModel):
-    school_id:       str = "evalschool"
-    class_id:        str                       # "9" or "9A"
-    subject:         str = "Science"
-    transcript_text: str
-    timestamp:       int | None = None         # epoch seconds; defaults to now
-    topic:           str | None = None         # optional; skips LLM topic-identification
-    chapter:         str | None = None
+    """Manually stamp a transcript for a daily class (demos without audio)."""
+    return await service.add_manual_transcript(daily_id=daily_id, text=payload.text)
 
 
 @router.post("/daily/transcript-doc")
-async def create_daily_transcript_doc(req: DailyTranscriptDoc, tenant: str = Depends(get_tenant), _: bool = Depends(api_key_guard)):
-    """Insert a daily_transcripts doc the CORRECT way — with the worker's composite
-    string `_id` ({schoolId}_{classId}_{subject}_{timestamp}) — so manual docs are
-    consistent with audio-pipeline docs. Returns the `transcript_id` to summarize with."""
-    from app.db.mongo import get_client
-    from app.services.summary_blocks import insert_daily_transcript
-    if not (req.transcript_text or "").strip():
-        raise HTTPException(400, "transcript_text is required")
-    res = await insert_daily_transcript(
-        get_client(), school_id=req.school_id, class_id=req.class_id, subject=req.subject,
-        transcript_text=req.transcript_text, timestamp=req.timestamp,
-        topic=req.topic, chapter=req.chapter,
-    )
-    return {"status": "ok", **res}
+async def create_daily_transcript_doc(
+    req: DailyTranscriptDoc,
+    service: DailyClassService = Depends(get_daily_class_service),
+    _: bool = Depends(api_key_guard),
+):
+    """Insert a daily_transcripts doc with the worker's composite string _id."""
+    return await service.create_transcript_doc(req)
 
 
 @router.post("/daily/summarize")
 async def daily_summarize(
     req: SummarizeRequest = Body(default=SummarizeRequest()),
-    tenant: str = Depends(get_tenant),
+    service: DailyClassService = Depends(get_daily_class_service),
     _: bool = Depends(api_key_guard),
 ):
-    """Unified summary entry. Two modes:
-
-    • transcript_id ONLY  → drive everything from the daily_transcripts doc: derive
-      class/section/subject/date, identify the topic, ensure classes_daily, summarize.
-    • daily_id / explicit → ensure the classes_daily record (create if absent), then
-      summarize from the inline text or the transcripts[daily_id] entry.
-
-    Either way it skips if summary_blocks already exist (unless force=true) and stamps
-    transcript_id onto the classes_daily doc."""
-    db = await get_db()
-
-    # ── Mode A: transcript-doc driven (just a daily_transcripts._id) ──────────
-    if req.transcript_id and not req.daily_id and req.class_no is None:
-        from app.services.summary_service import SummaryService
-        from app.db.mongo import get_client as get_mongo_client
-        try:
-            result = await SummaryService(get_mongo_client()).generate_summary(req.transcript_id, force=req.force)
-        except Exception as e:
-            raise HTTPException(500, f"Summary generation failed: {e}")
-        if not result:
-            raise HTTPException(400, f"Could not summarize transcript_id={req.transcript_id} (not found / topic not identified)")
-        if not result.get("skipped"):
-            asyncio.create_task(_eager_generate_quiz(db, result["daily_id"], tenant))
-        return {"status": "ok", **result}
-
-    # ── Mode B: daily_id / explicit fields / inline text ──────────────────────
-    from app.services.summary_blocks import summarize_daily_from_transcript
-    try:
-        result = await summarize_daily_from_transcript(
-            db, daily_id=req.daily_id, tenant=tenant,
-            class_no=req.class_no, section=req.section, subject=req.subject,
-            date=req.date, topics=req.topics,
-            transcript_text=req.transcript_text, transcript_id=req.transcript_id,
-            chapter_key=req.chapter_key, force=req.force,
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"Summary generation failed: {e}")
-
-    if not result.get("skipped"):
-        asyncio.create_task(_eager_generate_quiz(db, result["daily_id"], tenant))
-    return {"status": "ok", **result}
-
-
-# ---------- Try It Yourself widget generation ----------
-WIDGET_PROMPT = """You generate interactive "Try It Yourself" widgets for students. Return ONLY valid JSON.
-
-Choose the BEST widget type for the subject and topic:
-
-1. "slider_simulation" — for exploring formulas by changing values (Math, Physics)
-   {{
-     "widget_type": "slider_simulation",
-     "title": "Explore Area of Circle",
-     "instruction": "Drag the slider to change radius and watch area update!",
-     "formula": "A = π × r²",
-     "variables": [
-       {{"name": "radius", "label": "Radius (r)", "min": 1, "max": 10, "default": 3, "unit": "cm", "emoji": "📏"}}
-     ],
-     "outputs": [
-       {{"name": "area", "label": "Area", "expression": "Math.PI * radius * radius", "unit": "cm²", "emoji": "⭕", "decimals": 2}}
-     ],
-     "visual_type": "circle"
-   }}
-
-2. "parameter_simulation" — for exploring cause-effect with multiple variables (Physics, Chemistry)
-   {{
-     "widget_type": "parameter_simulation",
-     "title": "Newton's Second Law",
-     "instruction": "Change force and mass to observe acceleration.",
-     "formula": "a = F ÷ m",
-     "variables": [
-       {{"name": "force", "label": "Force (F)", "min": 1, "max": 100, "default": 20, "unit": "N", "emoji": "💪"}},
-       {{"name": "mass", "label": "Mass (m)", "min": 1, "max": 50, "default": 10, "unit": "kg", "emoji": "⚖️"}}
-     ],
-     "outputs": [
-       {{"name": "acceleration", "label": "Acceleration", "expression": "force / mass", "unit": "m/s²", "emoji": "🚀", "decimals": 2}}
-     ],
-     "visual_type": "motion"
-   }}
-
-3. "drag_sequence" — for ordering steps/processes (Science, History, any sequential concept)
-   {{
-     "widget_type": "drag_sequence",
-     "title": "Order the Photosynthesis Steps",
-     "instruction": "Tap a step, then tap its correct position.",
-     "items": [
-       {{"id": "1", "label": "Sunlight hits leaf", "emoji": "☀️", "correct_position": 1}},
-       {{"id": "2", "label": "Chlorophyll absorbs light", "emoji": "🌿", "correct_position": 2}},
-       {{"id": "3", "label": "CO₂ + Water react", "emoji": "💧", "correct_position": 3}},
-       {{"id": "4", "label": "Glucose + Oxygen produced", "emoji": "🍃", "correct_position": 4}}
-     ]
-   }}
-
-4. "step_builder" — for solving problems step by step (Math, Grammar)
-   {{
-     "widget_type": "step_builder",
-     "title": "Solve: 2x + 4 = 10",
-     "instruction": "Choose the correct next step.",
-     "steps": [
-       {{"prompt": "Step 1: Subtract 4 from both sides", "options": ["2x = 6", "2x = 14", "x = 6"], "correct": 0, "explanation": "10 − 4 = 6"}},
-       {{"prompt": "Step 2: Divide by 2", "options": ["x = 3", "x = 12", "x = 2"], "correct": 0, "explanation": "6 ÷ 2 = 3"}}
-     ]
-   }}
-
-RULES:
-- Use ONLY facts from the provided content
-- For expressions: use JavaScript math (Math.PI, *, /, +, -)
-- Variable names in expressions must match the "name" field exactly
-- Keep it simple for Class {{class_no}} students
-- For science processes: prefer drag_sequence
-- For math/physics formulas: prefer slider_simulation or parameter_simulation
-- For problem solving: prefer step_builder
-- Return exactly ONE widget object"""
+    """Unified summary entry (transcript_id-driven, or daily_id/explicit fields)."""
+    return await service.summarize(req)
 
 
 @router.post("/daily/generate-widget")
@@ -642,87 +116,37 @@ async def generate_tryit_widget(
     chapter_number: int = Query(1),
     class_no: int = Query(7),
     section: str = Query("A"),
-    tenant: str = Depends(get_tenant),
+    service: DailyClassService = Depends(get_daily_class_service),
     user: CurrentUser = Depends(require_role("teacher", "admin")),
 ):
     """Generate a Try It Yourself widget from curriculum data and stamp into classes_daily."""
-    import json as json_mod
-
-    db = await get_db()
-
-    # 1. Fetch curriculum chapter
-    chapter = await db.curriculum_chapters.find_one({
-        "class": class_no,
-        "subject": {"$regex": f"^{subject}$", "$options": "i"},
-        "chapter_number": chapter_number
-    })
-    if not chapter:
-        raise HTTPException(404, f"No curriculum found for class {class_no}, {subject}, chapter {chapter_number}")
-
-    # 2. Build context
-    concepts_text = "\n".join(
-        f"- {c.get('name', '')}: {c.get('explanation', '')}"
-        for c in chapter.get("concepts", [])
-    )
-    formulas = ", ".join(str(x) for x in chapter.get("key_formulas_or_rules", []))
-
-    content = f"""Class {class_no} {subject} — {chapter.get('chapter_title', '')}
-Concepts: {concepts_text}
-Formulas: {formulas}"""
-
-    # 3. Generate widget via LLM
-    client = get_client()
-    prompt = WIDGET_PROMPT.replace("{{class_no}}", str(class_no))
-
-    resp = client.chat.completions.create(
-        model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
-        messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": content}
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.3
-    )
-
-    try:
-        widget = json_mod.loads(resp.choices[0].message.content)
-        if "widget_type" not in widget:
-            raise ValueError("Missing widget_type")
-    except (json_mod.JSONDecodeError, ValueError) as e:
-        logger.error(f"Widget generation failed: {e}")
-        # Fallback: drag_sequence from concepts
-        concepts = chapter.get("concepts", [])[:4]
-        widget = {
-            "widget_type": "drag_sequence",
-            "title": f"Order the Key Concepts: {chapter.get('chapter_title', '')}",
-            "instruction": "Tap a concept, then tap its correct position.",
-            "items": [
-                {"id": str(i+1), "label": c.get("name", ""), "emoji": "📌", "correct_position": i+1}
-                for i, c in enumerate(concepts)
-            ]
-        }
-
-    # 4. Stamp into classes_daily
-    today = _today_iso()
-    await db.classes_daily.update_one(
-        {"tenant": tenant, "class_no": class_no, "section": section, "subject": chapter.get("subject", subject), "date": today},
-        {"$set": {"try_it_widget": widget}},
-        upsert=False  # only update existing daily class
-    )
-
-    logger.info(f"Widget generated for {subject} ch{chapter_number}: {widget.get('widget_type')}")
-
-    return {
-        "status": "ok",
-        "widget_type": widget.get("widget_type"),
-        "title": widget.get("title"),
-        "subject": chapter.get("subject", subject),
-        "chapter": chapter.get("chapter_title", "")
-    }
+    return await service.generate_widget(
+        subject=subject, chapter_number=chapter_number, class_no=class_no, section=section)
 
 
-# ---------- Comic Story endpoints ----------
+# ---------- Provider comparison (internal/admin eval) ----------
+@router.post("/compare/generate")
+async def generate_provider_comparison(
+    req: CompareRequest,
+    service: DailyClassService = Depends(get_daily_class_service),
+    user: CurrentUser = Depends(require_role("admin")),
+):
+    """Internal eval: generate a summary + story from EACH transcription provider."""
+    return await service.generate_comparison(req)
 
+
+@router.get("/compare")
+async def get_provider_comparison(
+    daily_id: str | None = None,
+    transcript_id: str | None = None,
+    service: DailyClassService = Depends(get_daily_class_service),
+    user: CurrentUser = Depends(require_role("admin")),
+):
+    """Return a cached provider comparison by daily_id or transcript_id."""
+    return await service.get_comparison(daily_id=daily_id, transcript_id=transcript_id)
+
+
+# ---------- Comic story ----------
 @router.get("/daily/{daily_id}/comic")
 async def get_comic_story(
     daily_id: str,
@@ -749,53 +173,10 @@ async def update_comic_progress(
         completed=completed, requester=user)
 
 
-# ---------- Provider comparison (internal/demo eval) ----------
-
-class CompareRequest(BaseModel):
-    daily_id:      str | None = None
-    transcript_id: str | None = None
-    grade:         int | None = None
-    force:         bool = False
-
-
-@router.post("/compare/generate")
-async def generate_provider_comparison(req: CompareRequest, tenant: str = Depends(get_tenant), user: CurrentUser = Depends(require_role("admin"))):
-    """
-    Internal eval: generate a summary + story from EACH transcription provider
-    (faster_whisper / sarvam / gemini), holding topic + NCERT context constant.
-    Stored in `provider_comparisons`. Provide transcript_id (preferred) or daily_id.
-    """
-    from app.services.provider_comparison_service import generate_comparison
-    try:
-        doc = await generate_comparison(
-            transcript_id=req.transcript_id,
-            daily_id=req.daily_id,
-            grade=req.grade,
-            force=req.force,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    return doc
-
-
-@router.get("/compare")
-async def get_provider_comparison(daily_id: str | None = None, transcript_id: str | None = None, user: CurrentUser = Depends(require_role("admin"))):
-    """Return a cached provider comparison by daily_id or transcript_id."""
-    from app.services.provider_comparison_service import get_comparison
-    doc = await get_comparison(daily_id=daily_id, transcript_id=transcript_id)
-    return doc or {"providers": None}
-
-
-# ---------- Animated story endpoints (5-rule engine) ----------
-
-# StoryRequest / GuruStoryRequest / SilfStoryRequest live in content_service (imported above).
-
-
+# ---------- Animated story (5-rule engine) ----------
 @router.get("/story")
 async def get_existing_story(
-    daily_id:   str,
+    daily_id: str,
     student_id: str,
     service: ContentService = Depends(get_content_service),
     user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
@@ -814,11 +195,10 @@ async def generate_story_endpoint(
     return await service.generate_story(req, requester=user)
 
 
-# ---------- Guru-Shishya dialogue story endpoints (parallel format) ----------
-
+# ---------- Guru-Shishya dialogue story ----------
 @router.get("/guru-story")
 async def get_existing_guru_story(
-    daily_id:   str,
+    daily_id: str,
     student_id: str,
     service: ContentService = Depends(get_content_service),
     user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin")),
@@ -837,10 +217,7 @@ async def generate_guru_story_endpoint(
     return await service.generate_guru(req, requester=user)
 
 
-# ---------- SILF revision-story endpoints (exam-centric, NCERT-figure-grounded) ----------
-# Parallel to /story — the existing comic story is untouched. Visuals here are the
-# real NCERT textbook figures ingested into ncert_figures (see ncert_ingest_service).
-
+# ---------- SILF revision story (NCERT-figure-grounded) ----------
 @router.get("/silf-story/formats")
 async def list_silf_formats(user: CurrentUser = Depends(require_role("student", "parent", "teacher", "admin"))):
     """The narrative formats a student can choose from (id + label + description)."""

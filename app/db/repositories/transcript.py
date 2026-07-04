@@ -21,3 +21,8 @@ class TranscriptRepository(BaseRepository):
 
     async def get_for_daily(self, daily_id: str) -> Optional[dict]:
         return await self.find_one({"daily_id": daily_id})
+
+    async def upsert_for_daily(self, daily_id: str, doc: dict):
+        """Replace the transcript for a daily (keyed by daily_id; not tenant-scoped)."""
+        return await self.c.replace_one(
+            {"daily_id": daily_id}, {**doc, "daily_id": daily_id}, upsert=True)

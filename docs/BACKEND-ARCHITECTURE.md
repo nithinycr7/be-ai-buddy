@@ -44,15 +44,16 @@ HTTPException` in routers, no status codes in services.
 - [db/repositories/student.py](../app/db/repositories/student.py) — Motor only
 
 ## Status (migrating existing code to this shape)
-- ✅ Full 3-layer: `students`, `progress`, `intervention`, `daily_quiz`, and the
-  `classes` **content endpoints** (comic/story/guru/silf → `ContentService`).
+- ✅ Full 3-layer: `students`, `progress`, `intervention`, `daily_quiz`, `leaderboard`,
+  `admin`, and **all of `classes`** (content → `ContentService`; daily-CRUD / summarize /
+  mindmap / transcript / widget / compare → `DailyClassService`).
   Services: `student_service`, `progress_service`, `intervention_service`,
-  `daily_quiz_service`, `content_service`. Tests: `test_daily_quiz_submit`,
-  `test_content_service`, `test_content_repos`.
-- ⬜ still `router → db` directly (service-coupled, already tenant-correct):
-  `classes` daily-CRUD/summarize/mindmap/transcript/widget, and `ai`, `admin`, `leaderboard`.
-  The entire student-facing learning loop is now on the layering; the remainder is
-  teacher/admin/worker plumbing to migrate opportunistically.
+  `daily_quiz_service`, `content_service`, `daily_class_service`, `leaderboard_service`,
+  `admin_service`. Tests: `test_daily_quiz_submit`, `test_content_service`, `test_content_repos`.
+- ⬜ still `router → db` directly: `ai` (the 154KB god-router — its own track).
+- Worker endpoints (`api_key_guard`, no user token) go through the same services;
+  the service uses repositories, `db` is injected only to hand to legacy engines
+  (AutoQuizGenerator, SummaryService, resolve_grounding, insert_daily_transcript).
 
 New features MUST start at the reference shape — do not add a router that talks to a
 repository (or a db) directly.
