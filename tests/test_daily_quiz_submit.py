@@ -22,7 +22,7 @@ from app.db.repositories import (  # noqa: E402
     DailyClassRepository, QuizAnalyticsRepository, QuizAttemptRepository,
     QuizRepository, StreakRepository, StudentDailyProgressRepository,
 )
-from app.routers.daily_quiz import SubmitQuizRequest, submit_daily_quiz  # noqa: E402
+from app.services.daily_quiz_service import DailyQuizService  # noqa: E402
 
 TENANT = "T1"
 STUDENT = "STU-1"
@@ -43,16 +43,15 @@ async def _run():
         "questions": [{"qid": "q1", "difficulty": "easy", "correct": ["a"]},
                       {"qid": "q2", "difficulty": "hard", "correct": ["b"]}]})
 
-    def repos():
-        return dict(
-            quizzes=QuizRepository(db, TENANT), daily=DailyClassRepository(db, TENANT),
-            attempts=QuizAttemptRepository(db, TENANT),
-            progress_repo=StudentDailyProgressRepository(db, TENANT),
-            streak_repo=StreakRepository(db, TENANT),
-            analytics_repo=QuizAnalyticsRepository(db, TENANT))
+    def service(tenant=TENANT):
+        # generator is unused by submit() -> None is fine for this test
+        return DailyQuizService(
+            QuizRepository(db, tenant), DailyClassRepository(db, tenant),
+            QuizAttemptRepository(db, tenant), StudentDailyProgressRepository(db, tenant),
+            StreakRepository(db, tenant), QuizAnalyticsRepository(db, tenant), None)
 
     user = types.SimpleNamespace(role="student", student_id=STUDENT, kids=[])
-    req = SubmitQuizRequest(quiz_id=str(quiz_oid), daily_id=str(daily_oid), student_id=STUDENT,
+    submit_args = dict(quiz_id=str(quiz_oid), daily_id=str(daily_oid), student_id=STUDENT,
         responses={"q1": {"answer": "a", "is_correct": True, "hint_used": False, "time_spent": 5},
                    "q2": {"answer": "b", "is_correct": True, "hint_used": False, "time_spent": 5}},
         time_taken_seconds=10)
@@ -61,12 +60,12 @@ async def _run():
 
     # Both correct, 1st attempt: weighted (1*1 + 3*1)/(1+3)*80 = 80.0
     # xp = 20 base + 10 no-hint + 6 speed = 36
-    r = await submit_daily_quiz(request=req, user=user, **repos())
+    r = await service().submit(requester=user, **submit_args)
     checks += [
-        ("score == 80.0", r.score == 80.0),
-        ("correct_count == 2", r.correct_count == 2),
-        ("xp_earned == 36", r.xp_earned == 36),
-        ("current_streak == 1", r.current_streak == 1),
+        ("score == 80.0", r["score"] == 80.0),
+        ("correct_count == 2", r["correct_count"] == 2),
+        ("xp_earned == 36", r["xp_earned"] == 36),
+        ("current_streak == 1", r["current_streak"] == 1),
     ]
 
     prog = await db.student_daily_progress.find_one({"student_id": STUDENT, "daily_id": str(daily_oid)})
@@ -85,19 +84,18 @@ async def _run():
                    await db.quiz_analytics.count_documents({"quiz_id": str(quiz_oid)}) == 2))
 
     # 2nd submit same day: streak must NOT double-increment; attempts -> 2
-    r2 = await submit_daily_quiz(request=req, user=user, **repos())
-    checks.append(("2nd submit same-day streak stays 1", r2.current_streak == 1))
+    r2 = await service().submit(requester=user, **submit_args)
+    checks.append(("2nd submit same-day streak stays 1", r2["current_streak"] == 1))
     prog2 = await db.student_daily_progress.find_one({"student_id": STUDENT, "daily_id": str(daily_oid)})
     checks.append(("progress quiz_attempts == 2", bool(prog2) and prog2.get("quiz_attempts") == 2))
 
-    # cross-tenant isolation: another tenant's repo can't see this quiz -> 404
-    from fastapi import HTTPException
+    # cross-tenant isolation: another tenant's service can't see this quiz -> domain NotFoundError (404)
+    from app.core.exceptions import NotFoundError
     try:
-        await submit_daily_quiz(request=req, user=user,
-                                **{**repos(), "quizzes": QuizRepository(db, "OTHER")})
-        checks.append(("cross-tenant quiz -> 404", False))
-    except HTTPException as e:
-        checks.append(("cross-tenant quiz -> 404", e.status_code == 404))
+        await service(tenant="OTHER").submit(requester=user, **submit_args)
+        checks.append(("cross-tenant quiz -> NotFound(404)", False))
+    except NotFoundError as e:
+        checks.append(("cross-tenant quiz -> NotFound(404)", e.status_code == 404))
 
     for c in COLLECTIONS:
         await db[c].delete_many({})

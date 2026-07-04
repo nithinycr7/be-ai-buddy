@@ -44,10 +44,11 @@ HTTPException` in routers, no status codes in services.
 - [db/repositories/student.py](../app/db/repositories/student.py) — Motor only
 
 ## Status (migrating existing code to this shape)
-- ✅ Full 3-layer: `students`
-- 🟡 router → repository (service layer still to be inserted): `progress`,
-  `intervention`, `daily_quiz`, `classes` (content endpoints)
-- ⬜ still `router → db` directly: `ai`, `admin`, `leaderboard`, `classes` (daily-CRUD)
+- ✅ Full 3-layer: `students`, `progress`, `intervention`, `daily_quiz`
+  (services: `student_service`, `progress_service`, `intervention_service`,
+  `daily_quiz_service`; the last guarded by `tests/test_daily_quiz_submit.py`).
+- 🟡 router → repository (service layer still to be inserted): `classes` (content endpoints).
+- ⬜ still `router → db` directly: `ai`, `admin`, `leaderboard`, `classes` (daily-CRUD).
 
 New features MUST start at the reference shape — do not add a router that talks to a
 repository (or a db) directly.
