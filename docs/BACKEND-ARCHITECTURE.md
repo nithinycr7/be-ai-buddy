@@ -44,11 +44,15 @@ HTTPException` in routers, no status codes in services.
 - [db/repositories/student.py](../app/db/repositories/student.py) — Motor only
 
 ## Status (migrating existing code to this shape)
-- ✅ Full 3-layer: `students`, `progress`, `intervention`, `daily_quiz`
-  (services: `student_service`, `progress_service`, `intervention_service`,
-  `daily_quiz_service`; the last guarded by `tests/test_daily_quiz_submit.py`).
-- 🟡 router → repository (service layer still to be inserted): `classes` (content endpoints).
-- ⬜ still `router → db` directly: `ai`, `admin`, `leaderboard`, `classes` (daily-CRUD).
+- ✅ Full 3-layer: `students`, `progress`, `intervention`, `daily_quiz`, and the
+  `classes` **content endpoints** (comic/story/guru/silf → `ContentService`).
+  Services: `student_service`, `progress_service`, `intervention_service`,
+  `daily_quiz_service`, `content_service`. Tests: `test_daily_quiz_submit`,
+  `test_content_service`, `test_content_repos`.
+- ⬜ still `router → db` directly (service-coupled, already tenant-correct):
+  `classes` daily-CRUD/summarize/mindmap/transcript/widget, and `ai`, `admin`, `leaderboard`.
+  The entire student-facing learning loop is now on the layering; the remainder is
+  teacher/admin/worker plumbing to migrate opportunistically.
 
 New features MUST start at the reference shape — do not add a router that talks to a
 repository (or a db) directly.
