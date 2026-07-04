@@ -21,6 +21,7 @@ from ..mongo import get_db
 from ...core.security import get_tenant
 from .base import BaseRepository, InvalidObjectId
 from .daily import DailyClassRepository
+from .engagement import QuizAnalyticsRepository, StreakRepository
 from .intervention import InterventionRepository
 from .progress import StudentDailyProgressRepository, StudentProgressRepository
 from .quiz import QuizAttemptRepository, QuizRepository, QuizResponseRepository
@@ -39,6 +40,8 @@ __all__ = [
     "QuizAttemptRepository",
     "StudentRepository",
     "TranscriptRepository",
+    "StreakRepository",
+    "QuizAnalyticsRepository",
     # providers
     "get_daily_repo",
     "get_quiz_repo",
@@ -49,6 +52,8 @@ __all__ = [
     "get_intervention_repo",
     "get_student_repo",
     "get_transcript_repo",
+    "get_streak_repo",
+    "get_quiz_analytics_repo",
 ]
 
 
@@ -70,3 +75,5 @@ get_daily_progress_repo = _provider(StudentDailyProgressRepository)
 get_intervention_repo = _provider(InterventionRepository)
 get_student_repo = _provider(StudentRepository)
 get_transcript_repo = _provider(TranscriptRepository)
+get_streak_repo = _provider(StreakRepository)
+get_quiz_analytics_repo = _provider(QuizAnalyticsRepository)

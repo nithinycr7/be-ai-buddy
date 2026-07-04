@@ -18,7 +18,13 @@ class QuizRepository(BaseRepository):
         return await self.find_by_id(quiz_id)
 
     async def get_by_daily(self, daily_id: str) -> Optional[dict]:
+        """Lookup where `daily_id` is stored as a plain string."""
         return await self.find_one({"daily_id": daily_id})
+
+    async def get_by_daily_oid(self, daily_id: str) -> Optional[dict]:
+        """Lookup where `daily_id` is stored as an ObjectId (the live daily-quiz shape,
+        written by AutoQuizGenerator). Raises InvalidObjectId on malformed input."""
+        return await self.find_one({"daily_id": self._oid(daily_id)})
 
 
 class QuizResponseRepository(BaseRepository):
@@ -50,3 +56,29 @@ class QuizAttemptRepository(BaseRepository):
             limit=1,
         )
         return rows[0] if rows else None
+
+    async def get_active(self, *, quiz_id: str, student_id: str) -> Optional[dict]:
+        """The in-progress (not yet completed) attempt, populated by verify-answer."""
+        return await self.find_one(
+            {"quiz_id": quiz_id, "student_id": student_id, "completed_at": None}
+        )
+
+    async def latest_for_daily(self, *, daily_id: str, student_id: str) -> Optional[dict]:
+        rows = await self.find_many(
+            {"daily_id": daily_id, "student_id": student_id},
+            sort=[("attempt_number", -1)],
+            limit=1,
+        )
+        return rows[0] if rows else None
+
+    async def record_answer(self, *, daily_id: str, student_id: str,
+                            set_fields: dict, insert_fields: dict):
+        """Upsert the active attempt with one graded answer (verify-answer path)."""
+        return await self.update_one(
+            {"daily_id": daily_id, "student_id": student_id, "completed_at": None},
+            {"$set": set_fields, "$setOnInsert": insert_fields},
+            upsert=True,
+        )
+
+    async def finalize(self, attempt_oid, fields: dict):
+        return await self.update_one({"_id": attempt_oid}, {"$set": fields})

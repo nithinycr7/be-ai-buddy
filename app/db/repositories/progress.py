@@ -35,6 +35,13 @@ class StudentDailyProgressRepository(BaseRepository):
     async def get(self, *, student_id: str, daily_id: str) -> Optional[dict]:
         return await self.find_one({"student_id": student_id, "daily_id": daily_id})
 
+    async def upsert(self, *, student_id: str, daily_id: str, doc: dict) -> None:
+        await self.update_one(
+            {"student_id": student_id, "daily_id": daily_id},
+            {"$set": doc},
+            upsert=True,
+        )
+
     async def list_for_student(
         self, *, student_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None
     ) -> list:

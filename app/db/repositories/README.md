@@ -28,7 +28,11 @@ handler forgot `"tenant": tenant` in a filter).
 | `TranscriptRepository` | `transcripts` | **NOT** tenant-scoped (keyed by globally-unique `daily_id`) |
 
 ## Migrated so far (live, using repos)
-`students.py`, `progress.py`, `intervention.py`.
+`students.py`, `progress.py`, `intervention.py`, `daily_quiz.py`.
+
+`daily_quiz.py` is the live quiz path — its migration is guarded by
+`tests/test_daily_quiz_submit.py` (seed → submit → assert score/XP/streak +
+tenant isolation; run with `MONGODB_DB=mymedha_repo_test python -m tests.test_daily_quiz_submit`).
 
 ## Deleted as dead (FE never called them; not mounted in main.py)
 - `quiz.py` (`/api/quiz/*`) and `quizzes.py` (`/api/quizzes/*`) — duplicate of the
@@ -37,8 +41,6 @@ handler forgot `"tenant": tenant` in a filter).
   — generic CRUD the FE never used.
 
 ## Not yet migrated (still call `get_db()` directly)
-- `daily_quiz.py` — **live** quiz path; migrate with an integration test
-  (seed → submit → assert score/streak), not a blind query swap.
 - `classes.py` — 16 data calls, intertwined with worker endpoints + LLM logic.
 - `leaderboard.py`, `admin.py`, `ai.py` (god-router, separate track),
   `audio_upload.py` (worker), `auth.py`/`devices.py` (already use service layers).
