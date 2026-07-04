@@ -53,7 +53,12 @@ HTTPException` in routers, no status codes in services.
 - ✅ `ai` — dead `/story` + `/rag-answer` removed; `/tts` + `/simulation` → `AiService`
   (`SimulationRepository`); prompt templates in the pure `services/simulation_prompts.py`.
   ai.py went 2970 → ~40 lines (thin router).
-- **Every router is now on the layering.** Remaining `router → db` sites are gone.
+- The **entire student-facing learning loop + the originally-flagged routers** (classes,
+  ai, admin, leaderboard) are fully layered.
+- ⬜ Not yet migrated (own follow-up): `ncert`, `chat`, `engine`, `learning_engine`,
+  `audio_upload` (worker), and `teacher/*`. `auth`/`devices` already delegate to
+  `auth_service`/`device_service` but still have a few `get_db()`/`HTTPException` spots
+  to thin. Apply the same pattern when touching these.
 - Worker endpoints (`api_key_guard`, no user token) go through the same services;
   the service uses repositories, `db` is injected only to hand to legacy engines
   (AutoQuizGenerator, SummaryService, resolve_grounding, insert_daily_transcript).
