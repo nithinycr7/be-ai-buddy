@@ -70,15 +70,6 @@ class QuizOption(BaseModel):
     key: str
     description: str
 
-class QuizResponse(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
-    quiz_id: str
-    daily_id: str
-    student_id: str
-    date: date
-    responses: Dict[str, List[str]] # {qid: ['a']}
-    score: Optional[float] = None
-
 class Transcript(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
     daily_id: Optional[str] = None
@@ -203,25 +194,6 @@ class Quiz(BaseModel):
 
     class Config:
         populate_by_name = True
-
-class QuizResponse(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
-    daily_id: str
-    student_id: str
-    quiz_id: str
-    tenant: str
-    
-    attempt_number: int
-    attempted_at: str
-    
-    responses: Dict[str, List[str]]  # {qid: [selected_option]}
-    correct_answers: Dict[str, List[str]]  # {qid: [correct_option]}
-    
-    score: float  # Percentage
-    correct_count: int
-    total_questions: int
-    
-    time_taken_seconds: Optional[int] = None
 
 # New models for Daily Quiz Feature
 class StudentQuizAttempt(BaseModel):

@@ -64,8 +64,10 @@ tenant in the filter). Global NCERT collections use the non-scoped
 1. ~~`calculate_completion` undefined~~ — **resolved**: only `quiz.py` referenced it; deleted.
 2. ~~`daily_id` ObjectId-vs-str split~~ — **resolved**: the `str` consumer (`quiz.py`) is
    gone; only `daily_quiz.py`'s ObjectId form remains live.
-3. **Duplicate `class QuizResponse`** in `models/schemas.py` (line ~73 and ~207) still
-   present but now low-priority (its dead consumers are removed). Dedupe when convenient.
+3. ~~Duplicate `class QuizResponse`~~ — **resolved**: both defs were dead (only the
+   deleted quiz routers used them); removed from `models/schemas.py`.
+4. ~~`create_daily` inserted a `datetime.date` (not bson-encodable)~~ — **resolved**:
+   `create_daily` now uses `model_dump(mode="json")`, storing `date` as an ISO string.
 
 ## Remaining FE-dead endpoints (candidates for the ai.py / engine pass)
 - `POST /api/ai/story` — live story path is `/api/classes/story/generate` (this is the

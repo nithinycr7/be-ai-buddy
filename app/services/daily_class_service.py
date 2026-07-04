@@ -247,7 +247,9 @@ class DailyClassService:
 
     # ── create / list ─────────────────────────────────────────────────────────
     async def create_daily(self, payload: DailyClass) -> DailyClass:
-        data = payload.model_dump(by_alias=True, exclude_none=True)
+        # mode="json" serialises the `date` field to an ISO string — a plain
+        # date object is not bson-encodable (this was a latent create_daily bug).
+        data = payload.model_dump(by_alias=True, exclude_none=True, mode="json")
         data["tenant"] = self.tenant
         res = await self.daily.insert_one(data)
         payload.id = str(res.inserted_id)
