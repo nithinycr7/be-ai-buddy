@@ -17,6 +17,7 @@ from typing import Optional
 from fastapi import Depends, Header, HTTPException, status
 
 from .config import settings
+from .exceptions import ForbiddenError
 from .tokens import TokenError, decode_access_token
 
 
@@ -143,10 +144,10 @@ def assert_can_access_student(user: "CurrentUser", student_id: Optional[str]) ->
         return
     if user.role == "student":
         if user.student_id != student_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your data")
+            raise ForbiddenError("Not your data")
     elif user.role == "parent":
         if student_id not in (user.kids or []):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your child")
+            raise ForbiddenError("Not your child")
     # teacher / admin / superadmin: allowed within tenant
 
 

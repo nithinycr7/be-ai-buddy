@@ -1,0 +1,53 @@
+# Backend architecture — the non-negotiable layering
+
+**Every feature flows in ONE direction:**
+
+```
+router  →  service  →  repository  →  (Motor / MongoDB)
+ HTTP        rules       queries
+```
+
+Dependencies point downward only. A repository never imports a service; a service
+never imports a router; nothing calls "backwards" or skips a layer.
+
+## Layer contracts
+
+### Router (`app/routers/<x>.py`) — HTTP only, zero logic
+- Parse the request, call one service method, return the result.
+- Declarative auth via `Depends(require_role(...))` is allowed (it's HTTP-layer).
+- **Never**: `get_db()`, `db.<collection>`, `ObjectId`, business rules, or
+  `raise HTTPException`. If you typed any of those in a router, it's in the wrong layer.
+
+### Service (`app/services/<x>_service.py`) — business rules only
+- Holds the rules: uniqueness, ownership, not-found, orchestration, scoring, etc.
+- Calls repositories; **never touches Motor** and **never imports FastAPI/HTTPException**.
+- On failure raises a **domain exception** from `app/core/exceptions.py`
+  (`NotFoundError`, `ConflictError`, `ForbiddenError`, `BadRequestError`).
+- Injected via a `get_<x>_service(repo = Depends(get_<x>_repo))` provider.
+- May take the acting `CurrentUser` as a method arg for ownership checks.
+
+### Repository (`app/db/repositories/<x>.py`) — the ONLY layer touching collections
+- Subclasses `BaseRepository(db, tenant)`; every query is tenant-scoped automatically.
+- Converts `str → ObjectId` at its boundary (`find_by_id`, raising `InvalidObjectId`).
+- Returns plain dicts. The service/schema boundary converts `ObjectId → str`
+  (routes never see an ObjectId).
+
+## Errors
+Services/repositories raise `AppError` subclasses. **One** global handler
+(`register_exception_handlers` in `main.py`) maps them to HTTP. No `try/except
+HTTPException` in routers, no status codes in services.
+
+## Reference implementation
+`students` is the canonical vertical slice — copy its shape:
+- [routers/students.py](../app/routers/students.py) — thin
+- [services/student_service.py](../app/services/student_service.py) — rules + domain exceptions
+- [db/repositories/student.py](../app/db/repositories/student.py) — Motor only
+
+## Status (migrating existing code to this shape)
+- ✅ Full 3-layer: `students`
+- 🟡 router → repository (service layer still to be inserted): `progress`,
+  `intervention`, `daily_quiz`, `classes` (content endpoints)
+- ⬜ still `router → db` directly: `ai`, `admin`, `leaderboard`, `classes` (daily-CRUD)
+
+New features MUST start at the reference shape — do not add a router that talks to a
+repository (or a db) directly.

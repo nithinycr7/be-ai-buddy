@@ -20,11 +20,16 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from ...core.exceptions import BadRequestError
 
-class InvalidObjectId(ValueError):
+
+class InvalidObjectId(BadRequestError):
     """Raised when a string id cannot be parsed as an ObjectId.
 
-    Routers map this to HTTP 400 (it's malformed input, not a missing record)."""
+    A domain error (subclass of BadRequestError) so the single global handler
+    maps it to HTTP 400 — malformed input, not a missing record. Kept importable
+    from here for the existing `except InvalidObjectId` sites."""
+    detail = "Invalid id"
 
 
 class BaseRepository:

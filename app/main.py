@@ -2,6 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
+from .core.exceptions import register_exception_handlers
 from .db.mongo import init_indexes
 from .routers import students, classes, ai, admin, chat, progress, daily_quiz, leaderboard, audio_upload, ncert, intervention, auth, devices
 from .routers.teacher import lesson_plan, quiz as teacher_quiz, insights as teacher_insights, interventions as teacher_interventions
@@ -30,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Domain exceptions -> HTTP, in one place (keeps routers/services framework-agnostic)
+register_exception_handlers(app)
 
 # Routers
 app.include_router(auth.router, prefix=settings.API_PREFIX)
