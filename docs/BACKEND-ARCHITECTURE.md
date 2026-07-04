@@ -50,7 +50,10 @@ HTTPException` in routers, no status codes in services.
   Services: `student_service`, `progress_service`, `intervention_service`,
   `daily_quiz_service`, `content_service`, `daily_class_service`, `leaderboard_service`,
   `admin_service`. Tests: `test_daily_quiz_submit`, `test_content_service`, `test_content_repos`.
-- ⬜ still `router → db` directly: `ai` (the 154KB god-router — its own track).
+- ✅ `ai` — dead `/story` + `/rag-answer` removed; `/tts` + `/simulation` → `AiService`
+  (`SimulationRepository`); prompt templates in the pure `services/simulation_prompts.py`.
+  ai.py went 2970 → ~40 lines (thin router).
+- **Every router is now on the layering.** Remaining `router → db` sites are gone.
 - Worker endpoints (`api_key_guard`, no user token) go through the same services;
   the service uses repositories, `db` is injected only to hand to legacy engines
   (AutoQuizGenerator, SummaryService, resolve_grounding, insert_daily_transcript).

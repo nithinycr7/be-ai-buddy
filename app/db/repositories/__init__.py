@@ -31,6 +31,7 @@ from .intervention import InterventionRepository
 from .leaderboard import LeaderboardRepository
 from .progress import StudentDailyProgressRepository, StudentProgressRepository
 from .quiz import QuizAttemptRepository, QuizRepository, QuizResponseRepository
+from .simulation import SimulationRepository
 from .student import StudentRepository
 from .transcript import TranscriptRepository
 
@@ -56,6 +57,7 @@ __all__ = [
     "CurriculumRepository",
     "NcertContentRepository",
     "LeaderboardRepository",
+    "SimulationRepository",
     # providers
     "get_daily_repo",
     "get_quiz_repo",
@@ -76,6 +78,7 @@ __all__ = [
     "get_curriculum_repo",
     "get_ncert_content_repo",
     "get_leaderboard_repo",
+    "get_simulation_repo",
 ]
 
 
@@ -107,3 +110,4 @@ get_silf_story_repo = _provider(SilfStoryRepository)
 get_curriculum_repo = _provider(CurriculumRepository)
 get_ncert_content_repo = _provider(NcertContentRepository)
 get_leaderboard_repo = _provider(LeaderboardRepository)
+get_simulation_repo = _provider(SimulationRepository)
