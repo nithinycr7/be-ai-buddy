@@ -28,11 +28,25 @@ handler forgot `"tenant": tenant` in a filter).
 | `TranscriptRepository` | `transcripts` | **NOT** tenant-scoped (keyed by globally-unique `daily_id`) |
 
 ## Migrated so far (live, using repos)
-`students.py`, `progress.py`, `intervention.py`, `daily_quiz.py`.
+`students.py`, `progress.py`, `intervention.py`, `daily_quiz.py`, and the
+**content endpoints of `classes.py`** (comic / story / guru / silf).
 
-`daily_quiz.py` is the live quiz path — its migration is guarded by
-`tests/test_daily_quiz_submit.py` (seed → submit → assert score/XP/streak +
-tenant isolation; run with `MONGODB_DB=mymedha_repo_test python -m tests.test_daily_quiz_submit`).
+Guarded by tests (run with `MONGODB_DB=mymedha_repo_test python -m tests.<name>`):
+- `tests/test_daily_quiz_submit.py` — daily-quiz submit: score/XP/streak + tenant isolation.
+- `tests/test_content_repos.py` — story/guru/silf/comic repos: **closes the write-gap**
+  (writes used to omit tenant in the replace_one filter → two tenants sharing a
+  (daily_id, student_id) could overwrite each other) + silf per-format cache + curriculum global.
+
+### classes.py is partially migrated — by design
+It's a service-orchestration router: many endpoints hand a raw `db` to content
+services (`resolve_grounding`, `generate_mindmap`, `SummaryService`, `_eager_generate_quiz`,
+`insert_daily_transcript`). So `classes.py` keeps `from ..db.mongo import get_db` for
+those handoffs + the global NCERT reads. What moved to repos: the **content
+generation/caching endpoints** (the ones with the real tenant write-gap). What stayed
+on `db`: the daily-CRUD / summarize / mindmap / transcript / widget endpoints — audited
+tenant-correct already (they update by `_id` fetched under a tenant filter, or include
+tenant in the filter). Global NCERT collections use the non-scoped
+`CurriculumRepository` / `NcertContentRepository`.
 
 ## Deleted as dead (FE never called them; not mounted in main.py)
 - `quiz.py` (`/api/quiz/*`) and `quizzes.py` (`/api/quizzes/*`) — duplicate of the
@@ -41,7 +55,8 @@ tenant isolation; run with `MONGODB_DB=mymedha_repo_test python -m tests.test_da
   — generic CRUD the FE never used.
 
 ## Not yet migrated (still call `get_db()` directly)
-- `classes.py` — 16 data calls, intertwined with worker endpoints + LLM logic.
+- `classes.py` daily-CRUD/summarize/mindmap/transcript/widget endpoints (service-coupled;
+  already tenant-correct — see note above).
 - `leaderboard.py`, `admin.py`, `ai.py` (god-router, separate track),
   `audio_upload.py` (worker), `auth.py`/`devices.py` (already use service layers).
 

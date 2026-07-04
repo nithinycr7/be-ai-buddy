@@ -20,6 +20,11 @@ from fastapi import Depends
 from ..mongo import get_db
 from ...core.security import get_tenant
 from .base import BaseRepository, InvalidObjectId
+from .content import (
+    ComicStoryRepository, GuruStoryRepository, SilfStoryRepository,
+    StoryGenerationRepository, SummaryRepository,
+)
+from .curriculum import CurriculumRepository, NcertContentRepository
 from .daily import DailyClassRepository
 from .engagement import QuizAnalyticsRepository, StreakRepository
 from .intervention import InterventionRepository
@@ -42,6 +47,13 @@ __all__ = [
     "TranscriptRepository",
     "StreakRepository",
     "QuizAnalyticsRepository",
+    "SummaryRepository",
+    "ComicStoryRepository",
+    "StoryGenerationRepository",
+    "GuruStoryRepository",
+    "SilfStoryRepository",
+    "CurriculumRepository",
+    "NcertContentRepository",
     # providers
     "get_daily_repo",
     "get_quiz_repo",
@@ -54,6 +66,13 @@ __all__ = [
     "get_transcript_repo",
     "get_streak_repo",
     "get_quiz_analytics_repo",
+    "get_summary_repo",
+    "get_comic_repo",
+    "get_story_repo",
+    "get_guru_story_repo",
+    "get_silf_story_repo",
+    "get_curriculum_repo",
+    "get_ncert_content_repo",
 ]
 
 
@@ -77,3 +96,10 @@ get_student_repo = _provider(StudentRepository)
 get_transcript_repo = _provider(TranscriptRepository)
 get_streak_repo = _provider(StreakRepository)
 get_quiz_analytics_repo = _provider(QuizAnalyticsRepository)
+get_summary_repo = _provider(SummaryRepository)
+get_comic_repo = _provider(ComicStoryRepository)
+get_story_repo = _provider(StoryGenerationRepository)
+get_guru_story_repo = _provider(GuruStoryRepository)
+get_silf_story_repo = _provider(SilfStoryRepository)
+get_curriculum_repo = _provider(CurriculumRepository)
+get_ncert_content_repo = _provider(NcertContentRepository)
