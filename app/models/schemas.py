@@ -1,13 +1,17 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field, EmailStr, field_validator
-from typing import List, Optional, Dict, Any, Union
+from pydantic import BaseModel, Field, EmailStr, field_validator, BeforeValidator
+from typing import List, Optional, Dict, Any, Union, Annotated
 from datetime import date
 
 from typing import Literal
 
 # ---------- Common ----------
+
+# Mongo's ObjectId → str at the schema boundary, so handlers never deal with
+# ObjectId and never hand-stringify _id. Used on every model's `id` (alias "_id").
+PyObjectId = Annotated[str, BeforeValidator(lambda v: str(v) if v is not None else v)]
 class School(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     tenant: str = Field(..., description="School/Tenant Name")
     branch: Optional[str] = None
     location: Optional[str] = None
@@ -15,7 +19,7 @@ class School(BaseModel):
     phone: Optional[str] = None
   
 class Teacher(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     teacher_id: Optional[str] = None
     name: str
     email: EmailStr
@@ -24,7 +28,7 @@ class Teacher(BaseModel):
     subjects: List[str] = []
 
 class Parent(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     name: Optional[str] = None
     email: EmailStr
     phone: Optional[str] = None
@@ -50,7 +54,7 @@ class ContentPrefs(BaseModel):
 
 
 class DailyClass(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     tenant: str = Field(default="demo-school", description="School/Tenant ID")
     date: date
     class_no: int
@@ -71,18 +75,18 @@ class QuizOption(BaseModel):
     description: str
 
 class Transcript(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     daily_id: Optional[str] = None
     student_id: Optional[str] = None
     text: str
 
 class Summary(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     daily_id: str
     text: str
 
 class Story(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     daily_id: str
     student_id: Optional[str] = None
     persona_used: Optional[str] = None
@@ -92,7 +96,7 @@ class Story(BaseModel):
     generation_count: Optional[int] = None
 
 class RAGDoc(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     chapter: str
     subject: str
     class_no: int
@@ -112,7 +116,7 @@ class UpdatePersonaRequest(BaseModel):
     story_persona: StoryPersona
 
 class Student(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     name: str
     student_id: str = Field(..., description="External student ID (e.g., 124537)")
     school_tenant: Optional[str] = None
@@ -127,7 +131,7 @@ class Student(BaseModel):
 
 # Progress Tracking Models
 class StudentProgress(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     student_id: str
     daily_id: str
     tenant: str
@@ -172,7 +176,7 @@ class QuizQuestion(BaseModel):
     explanation: Optional[str] = None
 
 class Quiz(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     daily_id: str
     subject: str
     topic: str
@@ -198,7 +202,7 @@ class Quiz(BaseModel):
 # New models for Daily Quiz Feature
 class StudentQuizAttempt(BaseModel):
     """Detailed quiz attempt with per-question analytics"""
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     quiz_id: str
     student_id: str
     daily_id: str
@@ -213,7 +217,7 @@ class StudentQuizAttempt(BaseModel):
 
 class StreakTracking(BaseModel):
     """Student streak and XP tracking"""
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     student_id: str
     tenant: str
     current_streak: int = 0
@@ -225,7 +229,7 @@ class StreakTracking(BaseModel):
 
 class QuizAnalytics(BaseModel):
     """Analytics data for quiz questions"""
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     quiz_id: str
     question_id: str
     tenant: str
@@ -245,7 +249,7 @@ class QuizQuestionPublic(BaseModel):
     # Excludes correct, hint, explanation
 
 class QuizPublic(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     daily_id: str
     subject: str
     topic: str
@@ -282,7 +286,7 @@ class AnswerVerificationResponse(BaseModel):
 
 
 class StudentDailyProgress(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     student_id: str
     daily_id: str
     tenant: str
@@ -313,7 +317,7 @@ class Badge(BaseModel):
 
 
 class StudentBadge(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     student_id: str
     badge_id: str
     awarded_at: str
@@ -349,7 +353,7 @@ class VerificationQuestionPublic(BaseModel):
 
 class InterventionRecord(BaseModel):
     """A stored adaptive intervention for one student on one quiz attempt."""
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
     student_id: str
     daily_id: str
     quiz_id: str

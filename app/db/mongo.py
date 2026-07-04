@@ -28,3 +28,12 @@ async def get_db() -> AsyncIOMotorDatabase:
 async def init_indexes():
     db = await get_db()
     await indexes.ensure(db)
+
+
+def close_client() -> None:
+    """Close the shared Motor client (called on app shutdown from the lifespan)."""
+    global _client, _db
+    if _client is not None:
+        _client.close()
+    _client = None
+    _db = None

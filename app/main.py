@@ -1,9 +1,10 @@
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .core.exceptions import register_exception_handlers
-from .db.mongo import init_indexes
+from .db.mongo import close_client, get_client, init_indexes
 from .routers import students, classes, ai, admin, chat, progress, daily_quiz, leaderboard, audio_upload, ncert, intervention, auth, devices
 from .routers.teacher import lesson_plan, quiz as teacher_quiz, insights as teacher_insights, interventions as teacher_interventions
 
@@ -17,7 +18,20 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── startup ──────────────────────────────────────────────────────────────
+    settings.assert_production_ready()   # fail fast in prod on missing secrets/placeholders
+    get_client()                         # create the shared Motor client once, up front
+    await init_indexes()
+    init_learning_db()
+    yield
+    # ── shutdown ─────────────────────────────────────────────────────────────
+    close_client()
+
+
+app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0", lifespan=lifespan)
 
 # CORS — locked to known origins. Auth uses bearer tokens (not cookies), so we
 # don't need credentialed CORS. In dev we allow any localhost port + the
@@ -55,12 +69,6 @@ app.include_router(intervention.router, prefix=settings.API_PREFIX)
 app.include_router(teacher_interventions.router, prefix=f"{settings.API_PREFIX}/teacher/interventions", tags=["Teacher Interventions"])
 app.include_router(learning_engine_router, prefix=settings.API_PREFIX)
 app.include_router(engine_router, prefix=settings.API_PREFIX)
-
-@app.on_event("startup")
-async def on_startup():
-    settings.assert_production_ready()  # fail fast in prod on missing secrets/placeholders
-    await init_indexes()
-    init_learning_db()
 
 @app.get("/")
 async def health():

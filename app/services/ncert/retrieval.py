@@ -118,7 +118,7 @@ async def resolve_grounding(
                 {"subtopic_id": {"$in": list(subtopic_ids)}},
             ]
             scope = "section"
-        nodes = await db.ncert_nodes.find(query).sort("order", 1).to_list(length=None)
+        nodes = await db.ncert_nodes.find(query).sort("order", 1).to_list(length=2000)
         if nodes:
             text = "\n".join(n["text"] for n in nodes if n.get("type") == "text" and n.get("text"))[:6000]
             figures = [_figure_item(n) for n in nodes if n.get("type") == "figure"]
@@ -130,7 +130,7 @@ async def resolve_grounding(
     if chapter_key:
         pages = await db.ncert_chapter_text.find(
             {"chapter_key": chapter_key}, {"text": 1, "page": 1, "_id": 0}
-        ).sort("page", 1).to_list(length=None)
+        ).sort("page", 1).to_list(length=2000)
         content = "\n".join(p.get("text", "") for p in pages)[:6000]
     if not content and ch:
         concepts = "\n".join(
@@ -183,7 +183,7 @@ async def resolve_ncert_nodes(
         query["type"] = {"$in": types}
 
     cursor = db.ncert_nodes.find(query).sort("order", 1)
-    nodes = await cursor.to_list(length=None)
+    nodes = await cursor.to_list(length=2000)
 
     text_parts: list[str] = []
     tables: list[dict[str, Any]] = []

@@ -420,7 +420,7 @@ class LessonPlanService:
         if tenant:
             q["tenant"] = tenant
         cursor = self.saved.find(q)
-        plans = await cursor.to_list(length=None)
+        plans = await cursor.to_list(length=2000)
         for p in plans:
             p["_id"] = str(p["_id"])
             p["type"] = "saved"
@@ -465,7 +465,7 @@ class LessonPlanService:
         if tenant:
             recent_q["tenant"] = tenant
         drafts_cursor = self.drafts.find(recent_q)
-        drafts = await drafts_cursor.to_list(length=None)
+        drafts = await drafts_cursor.to_list(length=2000)
         
         # Combine and map to unified structure
         all_plans = []

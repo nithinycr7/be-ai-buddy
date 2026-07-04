@@ -175,7 +175,7 @@ async def resolve_ncert_content(db, class_no: int, subject: str, chapter_key: st
     if chapter_key:
         pages = await db.ncert_chapter_text.find(
             {"chapter_key": chapter_key}, {"text": 1, "page": 1, "_id": 0}
-        ).sort("page", 1).to_list(length=None)
+        ).sort("page", 1).to_list(length=2000)
         content = "\n".join(p.get("text", "") for p in pages)[:6000]
 
     if not content:

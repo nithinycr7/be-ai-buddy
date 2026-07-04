@@ -149,7 +149,7 @@ async def generate_comparison(*, transcript_id=None, daily_id=None, grade=None, 
     related = await tdb.daily_transcripts.find({
         "schoolId": school_id, "classId": class_id, "subject": subject,
         "timestamp": {"$gte": start, "$lte": end},
-    }).to_list(length=None)
+    }).to_list(length=2000)
     if not related:
         related = [trigger]
 

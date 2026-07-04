@@ -96,7 +96,7 @@ class SummaryService:
             
             # Manual docs have no timestamp window → the query finds nothing; fall back
             # to just the trigger doc so single-doc / manual inserts still summarize.
-            related_docs = await cursor.to_list(length=None) or [trigger_doc]
+            related_docs = await cursor.to_list(length=2000) or [trigger_doc]
                 
             from app.services.summary_blocks import best_transcript_text
             combined_text = "\n\n".join(
