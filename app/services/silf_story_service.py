@@ -168,6 +168,31 @@ def _validate(story: dict, *, catalog_ids: set[str], subject: str, topic: str, g
     md.setdefault("topic", topic)
     md.setdefault("class_grade", f"Class {grade}")
     md.setdefault("narrator", {})
+
+    _normalize_recap(story, steps)
+    return story
+
+
+def _normalize_recap(story: dict, steps: list) -> dict:
+    """Guarantee a safe, present `recap` (closing consolidation). If the model
+    omitted it, derive key_terms from the steps so a recap always exists — the
+    frontend can rely on it for newly generated stories."""
+    seen: set[str] = set()
+    terms: list[str] = []
+    for s in steps:
+        for t in (s.get("key_terms") or []):
+            k = str(t).strip().lower()
+            if str(t).strip() and k not in seen:
+                seen.add(k)
+                terms.append(str(t).strip())
+
+    r = story.get("recap") if isinstance(story.get("recap"), dict) else {}
+    tk = r.get("takeaways")
+    r["takeaways"] = [str(x).strip() for x in tk if str(x).strip()][:4] if isinstance(tk, list) else []
+    r["headline"] = (str(r.get("headline") or "").strip() or "What you just learned")
+    kt = r.get("key_terms") if isinstance(r.get("key_terms"), list) else terms
+    r["key_terms"] = [str(x).strip() for x in kt if str(x).strip()][:5] or terms[:5]
+    story["recap"] = r
     return story
 
 
@@ -222,6 +247,14 @@ def _fallback(topic: str, subject: str, grade: int, catalog: list[dict]) -> dict
                 "visual_asset_note": "The official NCERT diagram — the exact exam graphic.",
             },
         ],
+        "recap": {
+            "headline": "What you just learned",
+            "takeaways": [
+                f"{topic} is the key idea that unlocked today's problem.",
+                f"In the exam, name {topic} on its NCERT figure to score full marks.",
+            ],
+            "key_terms": [topic],
+        },
         "standards_verification_report": {
             "cbse_ncert_alignment_score_out_of_10": 8,
             "cognitive_load_safety_score_out_of_10": 9,

@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from ...core.config import settings
-from .base import OtpSender
-from .senders import DevEchoSender, NullSender
+from .base import EmailSender, OtpSender
+from .senders import DevEchoEmailSender, DevEchoSender, NullEmailSender, NullSender
 
 
 def get_otp_sender() -> OtpSender:
@@ -13,3 +13,12 @@ def get_otp_sender() -> OtpSender:
     if settings.is_production():
         return NullSender()
     return DevEchoSender()
+
+
+def get_email_sender() -> EmailSender:
+    # Same policy as SMS: Null in prod (no leak) until a provider is wired,
+    # DevEcho in non-prod. Wire a real sender here, e.g.
+    # `if settings.SENDGRID_KEY: return SendgridEmailSender(settings.SENDGRID_KEY)`.
+    if settings.is_production():
+        return NullEmailSender()
+    return DevEchoEmailSender()

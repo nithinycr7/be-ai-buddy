@@ -1,20 +1,24 @@
-"""Phone OTP for parent login (SPEC §3.3, §9).
+"""OTP for parent auth by EMAIL or PHONE (SPEC §3.3, §9).
 
 OTPs are 6-digit, short-TTL, rate-limited, hashed at rest, and never logged in
-prod. There is **no SMS provider wired yet** — in non-prod we echo the code back
-(``OTP_DEV_ECHO``) so the parent-login flow is testable end-to-end. Wiring a real
-gateway (MSG91 / Twilio / Gupshup) is a P2 follow-up: implement ``_send_sms``.
+prod. Delivery goes through the notifications abstraction — email-first is the
+caller's choice via ``resolve_identifier``. No real SMS/email provider is wired
+yet (dev-echo in non-prod, null in prod); wiring one is a P2 in ``notifications``.
+
+The stored code is keyed by ``(tenant, identifier)`` where identifier is a
+normalized email or phone, so the same machinery serves both channels.
 """
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from ..core.config import settings
 from ..core.passwords import generate_numeric_code, hash_secret, verify_secret
-from .notifications import get_otp_sender
+from .notifications import get_email_sender, get_otp_sender
 
 log = logging.getLogger(__name__)
 
@@ -36,14 +40,54 @@ def normalize_phone(phone: str) -> str:
     return p
 
 
-async def request_otp(db: AsyncIOMotorDatabase, *, tenant: str, phone: str) -> dict:
-    """Generate + store a fresh OTP for (tenant, phone). Returns a dict; in
-    non-prod it includes ``dev_otp`` so callers can complete the flow."""
-    phone = normalize_phone(phone)
+def normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
+
+def _looks_like_email(value: str) -> bool:
+    return "@" in (value or "")
+
+
+def normalize_identifier(identifier: str, channel: Optional[str] = None) -> Tuple[str, str]:
+    """(normalized_identifier, channel). Infers channel from the value if not given."""
+    ch = channel or ("email" if _looks_like_email(identifier) else "sms")
+    if ch == "email":
+        return normalize_email(identifier), "email"
+    return normalize_phone(identifier), "sms"
+
+
+def resolve_identifier(*, email: Optional[str] = None, phone: Optional[str] = None) -> Tuple[str, str]:
+    """Pick the delivery target — EMAIL FIRST, then phone. Returns (identifier, channel)."""
+    if email:
+        return normalize_email(email), "email"
+    if phone:
+        return normalize_phone(phone), "sms"
+    raise ValueError("email or phone required")
+
+
+async def request_otp(
+    db: AsyncIOMotorDatabase,
+    *,
+    tenant: str,
+    identifier: Optional[str] = None,
+    channel: Optional[str] = None,
+    phone: Optional[str] = None,  # legacy callers
+) -> dict:
+    """Generate + store a fresh OTP for (tenant, identifier) and deliver it via the
+    channel's sender. In non-prod the result includes ``dev_otp``. Accepts a legacy
+    ``phone=`` kwarg (treated as an sms identifier)."""
+    if identifier is None:
+        if not phone:
+            raise ValueError("identifier or phone required")
+        identifier, channel = normalize_phone(phone), "sms"
+    else:
+        identifier, channel = normalize_identifier(identifier, channel)
+
     code = generate_numeric_code(settings.OTP_LENGTH)
     doc = {
         "tenant": tenant,
-        "phone": phone,
+        "identifier": identifier,
+        "channel": channel,
         "code_hash": hash_secret(code),
         "purpose": "login",
         "attempts": 0,
@@ -51,23 +95,45 @@ async def request_otp(db: AsyncIOMotorDatabase, *, tenant: str, phone: str) -> d
         "created_at": _now(),
         "expires_at": _now() + timedelta(minutes=settings.OTP_TTL_MIN),
     }
-    # One live OTP per (tenant, phone): replace any prior unconsumed code.
-    await db.otp_codes.delete_many({"tenant": tenant, "phone": phone, "consumed": False})
+    # One live OTP per (tenant, identifier): replace any prior unconsumed code.
+    await db.otp_codes.delete_many({"tenant": tenant, "identifier": identifier, "consumed": False})
     await db.otp_codes.insert_one(doc)
 
-    await get_otp_sender().send(phone=phone, code=code)
+    if channel == "email":
+        await get_email_sender().send(
+            to=identifier,
+            subject="Your MyMedha sign-in code",
+            body=f"Your one-time code is {code}. It expires in {settings.OTP_TTL_MIN} minutes.",
+        )
+    else:
+        await get_otp_sender().send(phone=identifier, code=code)
 
-    out = {"sent": True, "phone": phone, "expires_in": settings.OTP_TTL_MIN * 60}
+    out = {"sent": True, "channel": channel, "identifier": identifier,
+           "expires_in": settings.OTP_TTL_MIN * 60}
     if settings.OTP_DEV_ECHO and not settings.is_production():
         out["dev_otp"] = code
     return out
 
 
-async def verify_otp(db: AsyncIOMotorDatabase, *, tenant: str, phone: str, code: str) -> bool:
-    """Check + consume an OTP. Enforces expiry + per-code attempt cap (§9)."""
-    phone = normalize_phone(phone)
+async def verify_otp(
+    db: AsyncIOMotorDatabase,
+    *,
+    tenant: str,
+    code: str,
+    identifier: Optional[str] = None,
+    phone: Optional[str] = None,  # legacy callers
+) -> bool:
+    """Check + consume an OTP for (tenant, identifier). Enforces expiry + per-code
+    attempt cap (§9). Accepts a legacy ``phone=`` kwarg."""
+    if identifier is None:
+        if not phone:
+            return False
+        identifier = normalize_phone(phone)
+    else:
+        identifier, _ = normalize_identifier(identifier)
+
     rec = await db.otp_codes.find_one(
-        {"tenant": tenant, "phone": phone, "consumed": False},
+        {"tenant": tenant, "identifier": identifier, "consumed": False},
         sort=[("created_at", -1)],
     )
     if not rec:

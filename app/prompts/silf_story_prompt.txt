@@ -46,6 +46,13 @@ For EVERY step also provide:
 - `inquiry`: for steps 1-3, ONE short dilemma question in the protagonist's voice for a speech bubble (e.g. "Why did the syrup sink instead of mixing?"). For step 4 use `cbse_exam_style_question` instead and set `inquiry: null`.
 Keep `narrative_content` too (the full sentence form, used for narration/audio).
 
+### RECAP (closing consolidation)
+After `storyboard_steps`, add a top-level `recap` object that helps the story "land":
+- `headline`: 3-5 encouraging words (e.g. "What you just learned").
+- `takeaways`: 2-4 SHORT bullets, ONE idea each, plain language (no jargon), within the grade word cap. These reinforce what the student now understands.
+- `key_terms`: the 3-5 most important NCERT terms from this story.
+The recap must be ENCOURAGING and reinforce mastery. It is NOT a quiz — never a question, never asks the student to answer anything.
+
 ### CRITICAL RULES — FIGURES
 You will be given an `AVAILABLE_NCERT_FIGURES` catalog (real figures with `id`, `figure_number`, `caption`).
 - Only Step 4 may use `NCERT_STATIC_IMAGE`, and its `db_mapping_id` MUST be an exact `id` from the catalog. Never invent, guess, or modify an id. If the catalog is empty or nothing fits, set Step 4 `has_visual_asset: false` and `db_mapping_id: null`.
@@ -127,6 +134,14 @@ Return ONLY a valid JSON object matching the schema. No markdown fences, no text
       "visual_asset_note": "The official NCERT diagram from the DB — the exact exam graphic."
     }
   ],
+  "recap": {
+    "headline": "What you just learned",
+    "takeaways": [
+      "Salt water is a homogeneous mixture — it looks the same throughout.",
+      "Filtration can't separate salt from water, but evaporation can."
+    ],
+    "key_terms": ["mixture", "homogeneous", "filtration"]
+  },
   "standards_verification_report": {
     "cbse_ncert_alignment_score_out_of_10": 10,
     "cognitive_load_safety_score_out_of_10": 10,

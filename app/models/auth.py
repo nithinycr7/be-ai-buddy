@@ -64,14 +64,25 @@ class StudentLoginRequest(BaseModel):
 
 
 class OtpRequestRequest(BaseModel):
-    phone: str
-    tenant: Optional[str] = None  # resolved from context (subdomain/deep link/first-run)
+    identifier: Optional[str] = None  # email or phone (email preferred); channel inferred
+    channel: Optional[str] = None     # "email" | "sms" (optional override)
+    phone: Optional[str] = None       # legacy callers
+    tenant: Optional[str] = None      # resolved from context (subdomain/deep link/first-run)
+
+    @property
+    def contact(self) -> str:
+        return self.identifier or self.phone or ""
 
 
 class OtpVerifyRequest(BaseModel):
-    phone: str
+    identifier: Optional[str] = None  # email or phone
+    phone: Optional[str] = None       # legacy callers
     code: str
     tenant: Optional[str] = None
+
+    @property
+    def contact(self) -> str:
+        return self.identifier or self.phone or ""
 
 
 class FamilySwitchRequest(BaseModel):
@@ -113,12 +124,27 @@ class ProfileSwitchRequest(BaseModel):
 
 # --- parent invitation / claim ------------------------------------------------
 
+class StudentSignupRequest(BaseModel):
+    """Open (B2C) self-study student self-signup — verifies OTP on their own
+    email/phone, then creates a student in the shared 'direct' tenant."""
+    identifier: str            # email or phone (OTP was sent here)
+    code: str                  # the OTP
+    name: str
+    class_no: int
+    board: Optional[str] = "CBSE"
+
+
 class ClaimOtpRequest(BaseModel):
     """Unauthenticated claim of a school invitation (first-time / returning)."""
     token: str
-    phone: str
+    identifier: Optional[str] = None  # email or phone (must match the invite)
+    phone: Optional[str] = None       # legacy callers
     code: str
     relationship: Optional[str] = None
+
+    @property
+    def contact(self) -> str:
+        return self.identifier or self.phone or ""
 
 
 class ClaimAuthedRequest(BaseModel):

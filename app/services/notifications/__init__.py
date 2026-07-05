@@ -1,6 +1,6 @@
-"""Outbound notifications (OTP SMS). Program to the OtpSender Protocol; pick the
-concrete sender with get_otp_sender()."""
-from .base import OtpSender
-from .factory import get_otp_sender
+"""Outbound notifications (OTP SMS + email). Program to the sender Protocols; pick
+the concrete sender with get_otp_sender() / get_email_sender()."""
+from .base import EmailSender, OtpSender
+from .factory import get_email_sender, get_otp_sender
 
-__all__ = ["OtpSender", "get_otp_sender"]
+__all__ = ["OtpSender", "EmailSender", "get_otp_sender", "get_email_sender"]

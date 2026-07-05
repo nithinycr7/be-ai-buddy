@@ -15,7 +15,7 @@ from ..db.mongo import get_db
 from ..models.auth import (
     ClaimAuthedRequest, ClaimOtpRequest, FamilySwitchRequest, LogoutRequest,
     OtpRequestRequest, OtpVerifyRequest, PasswordLoginRequest, RefreshRequest,
-    StudentLoginRequest, TokenPair,
+    StudentLoginRequest, StudentSignupRequest, TokenPair,
 )
 from ..services import auth_service, invite_service, otp_service
 
@@ -60,7 +60,7 @@ async def login_otp_request(
     x_tenant_id: Optional[str] = Header(default=None, alias="X-Tenant-ID"),
 ):
     tenant = auth_service.pre_login_tenant(body.tenant, x_tenant_id)
-    return await otp_service.request_otp(db, tenant=tenant, phone=body.phone)
+    return await otp_service.request_otp(db, tenant=tenant, identifier=body.contact, channel=body.channel)
 
 
 @router.post("/login/otp/verify", response_model=TokenPair)
@@ -73,7 +73,20 @@ async def login_otp_verify(
 ):
     tenant = auth_service.pre_login_tenant(body.tenant, x_tenant_id)
     return await auth_service.parent_otp_login(
-        db, tenant=tenant, phone=body.phone, code=body.code, **_ctx(request, x_device_id))
+        db, tenant=tenant, identifier=body.contact, code=body.code, **_ctx(request, x_device_id))
+
+
+@router.post("/signup/student", response_model=TokenPair)
+async def signup_student(
+    body: StudentSignupRequest,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    x_device_id: Optional[str] = Header(default=None, alias="X-Device-Id"),
+):
+    """Open B2C self-study student self-signup (OTP-verified → 'direct' tenant)."""
+    return await auth_service.signup_open_student(
+        db, identifier=body.identifier, code=body.code, name=body.name,
+        class_no=body.class_no, board=body.board or "CBSE", **_ctx(request, x_device_id))
 
 
 @router.post("/family/switch", response_model=TokenPair)
@@ -134,9 +147,9 @@ async def claim(
     db: AsyncIOMotorDatabase = Depends(get_db),
     x_device_id: Optional[str] = Header(default=None, alias="X-Device-Id"),
 ):
-    """Unauthenticated claim: invite + phone + OTP → find-or-create parent → link child."""
+    """Unauthenticated claim: invite + (email|phone) + OTP → find-or-create parent → link child."""
     return await invite_service.claim_with_otp(
-        db, token=body.token, phone=body.phone, code=body.code,
+        db, token=body.token, identifier=body.contact, code=body.code,
         relationship=body.relationship, **_ctx(request, x_device_id))
 
 

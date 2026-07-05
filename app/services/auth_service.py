@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -34,9 +35,25 @@ log = logging.getLogger(__name__)
 
 _ACCESS_TTL_SECONDS = settings.ACCESS_TOKEN_TTL_MIN * 60
 
+# Shared tenant for open (B2C) self-study students — no school. `type: direct`.
+DIRECT_TENANT = getattr(settings, "B2C_TENANT", None) or "direct"
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+async def _ensure_direct_tenant(db: AsyncIOMotorDatabase) -> None:
+    """Create the shared B2C 'direct' tenant on first self-signup (idempotent)."""
+    await db.tenants.update_one(
+        {"tenant": DIRECT_TENANT},
+        {"$setOnInsert": {
+            "tenant": DIRECT_TENANT, "school_code": "SELF",
+            "name": "MyMedha (Self-study)", "board": "CBSE",
+            "type": "direct", "status": "active", "created_at": _now(),
+        }},
+        upsert=True,
+    )
 
 
 def _epoch() -> int:
@@ -282,26 +299,69 @@ async def parent_otp_login(
     db: AsyncIOMotorDatabase,
     *,
     tenant: str,
-    phone: str,
+    identifier: str,
     code: str,
     device_id: Optional[str] = None,
     user_agent: Optional[str] = None,
     ip: Optional[str] = None,
 ) -> dict:
-    """Verify the parent's phone OTP and issue a parent session (SPEC §3.3)."""
-    ok = await otp_service.verify_otp(db, tenant=tenant, phone=phone, code=code)
+    """Verify the parent's OTP (email or phone) and issue a parent session (SPEC §3.3)."""
+    norm, channel = otp_service.normalize_identifier(identifier)
+    ok = await otp_service.verify_otp(db, tenant=tenant, identifier=norm, code=code)
     if not ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired code")
-    norm = otp_service.normalize_phone(phone)
-    user = await db.users.find_one({"tenant": tenant, "role": "parent", "phone": norm})
+    field = "email" if channel == "email" else "phone"
+    # OTP login serves parents AND self-managed (open B2C) students — both
+    # authenticate with their own email/phone. School students have no contact
+    # here, so they never match.
+    user = await db.users.find_one({"tenant": tenant, field: norm, "role": {"$in": ["parent", "student"]}})
     if not user:
-        # Parent verified a phone but isn't onboarded yet — claim flow is P2.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No parent account for this number. Ask your school for an invite.",
+            detail="No account for this contact. Ask your school for an invite, or create an account.",
         )
     if user.get("status") == "suspended":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
+    return await _issue_for_user(db, user, device_id=device_id, user_agent=user_agent, ip=ip)
+
+
+async def signup_open_student(
+    db: AsyncIOMotorDatabase,
+    *,
+    identifier: str,
+    code: str,
+    name: str,
+    class_no: int,
+    board: str = "CBSE",
+    device_id: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    ip: Optional[str] = None,
+) -> dict:
+    """Open (B2C) self-study student: verify OTP on their own email/phone → create
+    (or find) a student in the shared 'direct' tenant with enrollment.type='self' →
+    issue a student session. Idempotent — an existing contact just logs in."""
+    norm, channel = otp_service.normalize_identifier(identifier)
+    if not await otp_service.verify_otp(db, tenant=DIRECT_TENANT, identifier=norm, code=code):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired code")
+
+    await _ensure_direct_tenant(db)
+    field = "email" if channel == "email" else "phone"
+    user = await db.users.find_one({"tenant": DIRECT_TENANT, "role": "student", field: norm})
+    if not user:
+        try:
+            cls = int(class_no)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid class")
+        doc = {
+            "tenant": DIRECT_TENANT, "role": "student", "status": "active",
+            "student_id": f"SELF-{uuid.uuid4().hex[:10].upper()}",
+            "name": name.strip() or "Learner", field: norm, "class_no": cls,
+            "enrollment": {"type": "self", "class_no": cls, "board": board or "CBSE"},
+            "failed_attempts": 0, "locked_until": None, "created_at": _now(),
+        }
+        res = await db.users.insert_one(doc)
+        doc["_id"] = res.inserted_id
+        user = doc
     return await _issue_for_user(db, user, device_id=device_id, user_agent=user_agent, ip=ip)
 
 

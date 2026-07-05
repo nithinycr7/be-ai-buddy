@@ -14,3 +14,11 @@ from typing import Protocol
 class OtpSender(Protocol):
     async def send(self, *, phone: str, code: str) -> None:
         ...
+
+
+class EmailSender(Protocol):
+    """Outbound email — same abstraction shape as OtpSender: concrete variants are
+    picked at runtime by config (DevEcho logs in non-prod, Null is a prod-safe no-op).
+    A real provider (SES / SendGrid) implements this and is wired in the factory."""
+    async def send(self, *, to: str, subject: str, body: str) -> None:
+        ...

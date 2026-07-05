@@ -27,6 +27,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from ..core.passwords import generate_opaque_token
 from ..core.tokens import hash_refresh_token
 from . import auth_service, otp_service
+from .notifications import get_email_sender, get_otp_sender
 
 log = logging.getLogger(__name__)
 
@@ -47,23 +48,38 @@ def _mask_phone(phone: str) -> str:
     return phone[:3] + "•••••" + phone[-2:] if phone and len(phone) >= 5 else "•••••"
 
 
+def _mask_email(email: str) -> Optional[str]:
+    if not email or "@" not in email:
+        return None
+    name, _, domain = email.partition("@")
+    head = name[0] if name else "•"
+    return f"{head}•••@{domain}"
+
+
 async def create_invite(
     db: AsyncIOMotorDatabase,
     *,
     tenant: str,
     student_id: str,
-    parent_phone: str,
+    parent_email: Optional[str] = None,
+    parent_phone: Optional[str] = None,
     relationship: str = "guardian",
     parent_name: Optional[str] = None,
     created_by: Optional[str] = None,
 ) -> dict:
-    """Create a pending invite for a roster student. Returns ``{token, ...}``
-    (raw token goes in the SMS link; only its hash is stored)."""
-    phone = otp_service.normalize_phone(parent_phone)
+    """Create a pending invite for a roster student. Email is the priority contact;
+    phone is the fallback — at least one is required. Returns ``{token, ...}``
+    (the raw token goes in the invite link; only its hash is stored)."""
+    email = otp_service.normalize_email(parent_email) if parent_email else None
+    phone = otp_service.normalize_phone(parent_phone) if parent_phone else None
+    if not email and not phone:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="An email or phone is required to invite a parent")
     token = generate_opaque_token(24)
     doc = {
         "tenant": tenant,
         "student_id": student_id,
+        "parent_email": email,
         "parent_phone": phone,
         "parent_name": parent_name,
         "relationship": relationship,
@@ -74,7 +90,29 @@ async def create_invite(
         "expires_at": _now() + timedelta(days=INVITE_TTL_DAYS),
     }
     await db.invites.insert_one(doc)
-    return {"token": token, "tenant": tenant, "student_id": student_id, "parent_phone": phone}
+    return {"token": token, "tenant": tenant, "student_id": student_id,
+            "parent_email": email, "parent_phone": phone}
+
+
+async def send_invite(db: AsyncIOMotorDatabase, *, token: str, tenant: str,
+                      parent_email: Optional[str], parent_phone: Optional[str],
+                      base_url: str) -> dict:
+    """Deliver the invite link — EMAIL FIRST, SMS fallback. Delivery goes through
+    the notifications senders (dev-echo/null until a provider is wired)."""
+    link = f"{base_url.rstrip('/')}/auth/invite/{token}"
+    if parent_email:
+        await get_email_sender().send(
+            to=otp_service.normalize_email(parent_email),
+            subject="Your child is invited to MyMedha",
+            body=f"Tap to set up your account and follow your child's learning: {link}",
+        )
+        return {"sent": True, "channel": "email"}
+    if parent_phone:
+        # No SMS body sender for links yet; reuse the OTP sender's channel as the
+        # delivery point (dev-echo logs it). A real SMS gateway lands in notifications.
+        await get_otp_sender().send(phone=otp_service.normalize_phone(parent_phone), code=link)
+        return {"sent": True, "channel": "sms"}
+    return {"sent": False, "channel": None}
 
 
 async def _load_invite(db: AsyncIOMotorDatabase, token: str) -> dict:
@@ -95,20 +133,35 @@ async def resolve_invite(db: AsyncIOMotorDatabase, *, token: str) -> dict:
     'Set up your account' vs 'Add <child>')."""
     inv = await _load_invite(db, token)
     tenant = inv["tenant"]
+    inv_email = inv.get("parent_email")
+    inv_phone = inv.get("parent_phone")
     child = await db.users.find_one({"tenant": tenant, "role": "student", "student_id": inv["student_id"]})
     school = await db.tenants.find_one({"tenant": tenant})
-    existing_parent = await db.users.find_one({"tenant": tenant, "role": "parent", "phone": inv["parent_phone"]})
+    # An existing parent may be found by either contact on the invite.
+    existing_parent = None
+    if inv_email:
+        existing_parent = await db.users.find_one({"tenant": tenant, "role": "parent", "email": inv_email})
+    if not existing_parent and inv_phone:
+        existing_parent = await db.users.find_one({"tenant": tenant, "role": "parent", "phone": inv_phone})
     already_linked = False
     if existing_parent and child:
         already_linked = bool(await db.parent_links.find_one({
             "tenant": tenant, "parent_id": str(existing_parent["_id"]),
             "student_id": inv["student_id"], "status": "active",
         }))
+    # Email-first: default_channel tells the UI which to verify with.
+    default_channel = "email" if inv_email else ("sms" if inv_phone else None)
     return {
         "status": inv.get("status"),
         "tenant": tenant,
         "school_name": (school or {}).get("name"),
-        "parent_phone_masked": _mask_phone(inv["parent_phone"]),
+        "parent_email_masked": _mask_email(inv_email) if inv_email else None,
+        "parent_phone_masked": _mask_phone(inv_phone) if inv_phone else None,
+        # Full contact so the onboarding screen can pre-fill the field the school
+        # already provided (the invite was delivered to this same address).
+        "parent_email": inv_email,
+        "parent_phone": inv_phone,
+        "default_channel": default_channel,
         "existing_parent": bool(existing_parent),
         "already_linked": already_linked,
         "child": {
@@ -121,14 +174,35 @@ async def resolve_invite(db: AsyncIOMotorDatabase, *, token: str) -> dict:
     }
 
 
-async def _find_or_create_parent(db, *, tenant: str, phone: str, name: Optional[str]) -> dict:
-    parent = await db.users.find_one({"tenant": tenant, "role": "parent", "phone": phone})
+async def _find_or_create_parent(db, *, tenant: str, email: Optional[str],
+                                 phone: Optional[str], name: Optional[str]) -> dict:
+    """Idempotent by (tenant, email) first, then (tenant, phone). If found by one
+    contact and the invite carries the other, backfill the missing contact so the
+    parent record accumulates both — no duplicate parents."""
+    email = otp_service.normalize_email(email) if email else None
+    phone = otp_service.normalize_phone(phone) if phone else None
+
+    parent = None
+    if email:
+        parent = await db.users.find_one({"tenant": tenant, "role": "parent", "email": email})
+    if not parent and phone:
+        parent = await db.users.find_one({"tenant": tenant, "role": "parent", "phone": phone})
+
     if parent:
+        backfill = {}
+        if email and not parent.get("email"):
+            backfill["email"] = email
+        if phone and not parent.get("phone"):
+            backfill["phone"] = phone
+        if backfill:
+            await db.users.update_one({"_id": parent["_id"]}, {"$set": backfill})
+            parent.update(backfill)
         return parent
+
     doc = {
         "tenant": tenant, "role": "parent", "status": "active",
-        "phone": phone, "name": name, "failed_attempts": 0, "locked_until": None,
-        "created_at": _now(),
+        "email": email, "phone": phone, "name": name,
+        "failed_attempts": 0, "locked_until": None, "created_at": _now(),
     }
     res = await db.users.insert_one(doc)
     doc["_id"] = res.inserted_id
@@ -157,27 +231,35 @@ async def claim_with_otp(
     db: AsyncIOMotorDatabase,
     *,
     token: str,
-    phone: str,
+    identifier: str,
     code: str,
     relationship: Optional[str] = None,
     device_id: Optional[str] = None,
     user_agent: Optional[str] = None,
     ip: Optional[str] = None,
 ) -> dict:
-    """Unauthenticated claim: verify OTP → find-or-create parent → link child →
-    issue a parent session. Idempotent (second invite just adds another child)."""
+    """Unauthenticated claim: the verified ``identifier`` (email or phone) must match
+    the invite's email (priority) or phone; verify OTP → find-or-create parent → link
+    child → issue a parent session. Idempotent (a second invite adds another child)."""
     inv = await _load_invite(db, token)
     tenant = inv["tenant"]
-    norm = otp_service.normalize_phone(phone)
-    if norm != inv["parent_phone"]:
+    norm, channel = otp_service.normalize_identifier(identifier)
+    inv_email = otp_service.normalize_email(inv["parent_email"]) if inv.get("parent_email") else None
+    inv_phone = inv.get("parent_phone")
+
+    matches = (channel == "email" and inv_email and norm == inv_email) or \
+              (channel == "sms" and inv_phone and norm == inv_phone)
+    if not matches:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="This number doesn't match the school invitation.")
-    if not await otp_service.verify_otp(db, tenant=tenant, phone=norm, code=code):
+                            detail="This doesn't match the school invitation.")
+    if not await otp_service.verify_otp(db, tenant=tenant, identifier=norm, code=code):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired code")
 
     if relationship:
         inv["relationship"] = relationship
-    parent = await _find_or_create_parent(db, tenant=tenant, phone=norm, name=inv.get("parent_name"))
+    # Carry BOTH invite contacts onto the parent, regardless of which was verified.
+    parent = await _find_or_create_parent(db, tenant=tenant, email=inv_email,
+                                          phone=inv_phone, name=inv.get("parent_name"))
     await _link_child(db, tenant=tenant, parent_id=str(parent["_id"]), invite=inv, method="otp")
     await auth_service._audit(db, tenant=tenant, actor_id=str(parent["_id"]),
                               action="parent.claim.otp", target=inv["student_id"], ip=ip)
@@ -203,9 +285,13 @@ async def claim_authenticated(
     parent = await db.users.find_one({"_id": ObjectId(parent_id)})
     if not parent or parent.get("role") != "parent":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a parent account")
-    if otp_service.normalize_phone(parent.get("phone", "")) != inv["parent_phone"]:
+    p_email = otp_service.normalize_email(parent.get("email") or "")
+    p_phone = otp_service.normalize_phone(parent["phone"]) if parent.get("phone") else ""
+    inv_email = otp_service.normalize_email(inv["parent_email"]) if inv.get("parent_email") else ""
+    inv_phone = inv.get("parent_phone") or ""
+    if not ((inv_email and p_email == inv_email) or (inv_phone and p_phone == inv_phone)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="This invitation was sent to a different number.")
+                            detail="This invitation was sent to a different contact.")
 
     if relationship:
         inv["relationship"] = relationship
