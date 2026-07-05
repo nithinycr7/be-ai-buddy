@@ -75,3 +75,31 @@ or raises `HTTPException`. Two honest caveats:
 
 New features MUST start at the reference shape — do not add a router that talks to a
 repository (or a db) directly.
+
+## Decision: keep layered repos, not full feature folders
+
+The spec's target is `app/features/<x>/{router,service,repository,schemas}.py`. We
+**deliberately did not** do a full feature-folder re-layout, because it fights this
+domain: the core repositories are shared across many features —
+
+| Repository | # of services importing it |
+|---|---|
+| `DailyClassRepository` | 6 (ai, daily_quiz, daily_class, progress, content, intervention) |
+| `StudentRepository` | 6 |
+| `StudentDailyProgressRepository` | 5 |
+| `QuizRepository` | 4 |
+
+Feature folders assume a feature *owns* its data. In a learning-loop app the same
+core entities (the daily class, the student, their progress) are touched by every
+feature, so a re-layout would force either duplicated repos (breaks single-source)
+or a `shared/repositories/` hatch for most repos — i.e. today's layout with churn.
+
+What we have instead is the right shape for this domain, and it satisfies the
+**non-negotiable** (one-directional `router → service → repository`):
+- routers: thin HTTP (`app/routers/`)
+- services: **feature-oriented**, one per feature (`app/services/<feature>_service.py`)
+- repositories: **shared**, tenant-scoped (`app/db/repositories/`) — shared because the data is
+- cohesive support packages: `app/prompts/`, `app/services/llm/`, `app/services/notifications/`
+
+If a feature ever grows genuinely feature-private data + endpoints, colocate *that*
+feature under `app/features/<x>/` — incrementally, not a big-bang re-layout.
