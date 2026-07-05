@@ -115,6 +115,28 @@ async def send_invite(db: AsyncIOMotorDatabase, *, token: str, tenant: str,
     return {"sent": False, "channel": None}
 
 
+async def send_invite_otp(db: AsyncIOMotorDatabase, *, token: str) -> dict:
+    """Send an OTP to the invite's OWN stored contact (email priority). The client
+    passes only the token — the full email/phone never leaves the server, so the
+    onboarding screen can offer one-tap 'Send code' against a masked contact with
+    no PII exposure. Returns only channel + masked (+ dev_otp in non-prod)."""
+    inv = await _load_invite(db, token)
+    inv_email = inv.get("parent_email")
+    inv_phone = inv.get("parent_phone")
+    if inv_email:
+        identifier, channel, masked = otp_service.normalize_email(inv_email), "email", _mask_email(inv_email)
+    elif inv_phone:
+        identifier, channel, masked = otp_service.normalize_phone(inv_phone), "sms", _mask_phone(inv_phone)
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="This invitation has no contact on file")
+    res = await otp_service.request_otp(db, tenant=inv["tenant"], identifier=identifier, channel=channel)
+    out = {"sent": True, "channel": channel, "masked": masked, "expires_in": res.get("expires_in")}
+    if res.get("dev_otp"):  # non-prod only; never the full identifier
+        out["dev_otp"] = res["dev_otp"]
+    return out
+
+
 async def _load_invite(db: AsyncIOMotorDatabase, token: str) -> dict:
     inv = await db.invites.find_one({"token_hash": hash_refresh_token(token)})
     bad = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired invitation")
@@ -155,12 +177,11 @@ async def resolve_invite(db: AsyncIOMotorDatabase, *, token: str) -> dict:
         "status": inv.get("status"),
         "tenant": tenant,
         "school_name": (school or {}).get("name"),
+        # Masked only — the full contact never leaves the server (it's PII behind a
+        # public bearer link). The onboarding screen confirms the masked value and
+        # the OTP is sent server-side via send_invite_otp (no typing, no leak).
         "parent_email_masked": _mask_email(inv_email) if inv_email else None,
         "parent_phone_masked": _mask_phone(inv_phone) if inv_phone else None,
-        # Full contact so the onboarding screen can pre-fill the field the school
-        # already provided (the invite was delivered to this same address).
-        "parent_email": inv_email,
-        "parent_phone": inv_phone,
         "default_channel": default_channel,
         "existing_parent": bool(existing_parent),
         "already_linked": already_linked,
@@ -231,27 +252,37 @@ async def claim_with_otp(
     db: AsyncIOMotorDatabase,
     *,
     token: str,
-    identifier: str,
+    identifier: Optional[str] = None,
     code: str,
     relationship: Optional[str] = None,
     device_id: Optional[str] = None,
     user_agent: Optional[str] = None,
     ip: Optional[str] = None,
 ) -> dict:
-    """Unauthenticated claim: the verified ``identifier`` (email or phone) must match
-    the invite's email (priority) or phone; verify OTP → find-or-create parent → link
-    child → issue a parent session. Idempotent (a second invite adds another child)."""
+    """Unauthenticated claim: verify OTP → find-or-create parent → link child →
+    issue a parent session. Idempotent (a second invite adds another child).
+    ``identifier`` is optional: when omitted (the confirm-masked path), the invite's
+    OWN stored contact is used (email priority). When provided (the 'use a different
+    contact' path), it must match the invite's email or phone."""
     inv = await _load_invite(db, token)
     tenant = inv["tenant"]
-    norm, channel = otp_service.normalize_identifier(identifier)
     inv_email = otp_service.normalize_email(inv["parent_email"]) if inv.get("parent_email") else None
     inv_phone = inv.get("parent_phone")
 
-    matches = (channel == "email" and inv_email and norm == inv_email) or \
-              (channel == "sms" and inv_phone and norm == inv_phone)
-    if not matches:
+    if identifier:
+        norm, channel = otp_service.normalize_identifier(identifier)
+        matches = (channel == "email" and inv_email and norm == inv_email) or \
+                  (channel == "sms" and inv_phone and norm == inv_phone)
+        if not matches:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="This doesn't match the school invitation.")
+    elif inv_email:
+        norm, channel = inv_email, "email"
+    elif inv_phone:
+        norm, channel = otp_service.normalize_phone(inv_phone), "sms"
+    else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="This doesn't match the school invitation.")
+                            detail="This invitation has no contact on file")
     if not await otp_service.verify_otp(db, tenant=tenant, identifier=norm, code=code):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired code")
 

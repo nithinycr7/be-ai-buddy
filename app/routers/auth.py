@@ -140,6 +140,13 @@ async def resolve_invite(token: str, db: AsyncIOMotorDatabase = Depends(get_db))
     return await invite_service.resolve_invite(db, token=token)
 
 
+@router.post("/invite/{token}/send-otp")
+async def send_invite_otp(token: str, db: AsyncIOMotorDatabase = Depends(get_db)):
+    """Send an OTP to the invite's own stored contact (email priority). The client
+    passes only the token; the full contact never leaves the server."""
+    return await invite_service.send_invite_otp(db, token=token)
+
+
 @router.post("/claim", response_model=TokenPair)
 async def claim(
     body: ClaimOtpRequest,
@@ -147,9 +154,10 @@ async def claim(
     db: AsyncIOMotorDatabase = Depends(get_db),
     x_device_id: Optional[str] = Header(default=None, alias="X-Device-Id"),
 ):
-    """Unauthenticated claim: invite + (email|phone) + OTP → find-or-create parent → link child."""
+    """Unauthenticated claim: invite + OTP → find-or-create parent → link child.
+    ``identifier`` is optional (confirm-masked path uses the invite's own contact)."""
     return await invite_service.claim_with_otp(
-        db, token=body.token, identifier=body.contact, code=body.code,
+        db, token=body.token, identifier=body.contact or None, code=body.code,
         relationship=body.relationship, **_ctx(request, x_device_id))
 
 
