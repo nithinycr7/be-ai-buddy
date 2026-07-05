@@ -23,9 +23,10 @@ from ..db.repositories import (
     StudentRepository, get_student_repo,
 )
 from ..services.ai import get_client, get_gemini_client
-from ..services.simulation_prompts import (
+from ..prompts.simulation import (
     _SIMULATION_TEMPLATE_V2, _build_simulation_prompt, _extract_summary_text,
 )
+from ..prompts.tts import SSML_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +36,6 @@ class TTSRequest(BaseModel):
     voice: str = "en-IN-NeerjaNeural"
     # Azure Neural voice options (Indian English, kid-friendly):
     #   en-IN-NeerjaNeural / en-IN-PrabhatNeural / en-US-JennyNeural / en-US-GuyNeural
-
-
-_SSML_TEMPLATE = """\
-<speak version='1.0' xml:lang='en-IN' xmlns='http://www.w3.org/2001/10/synthesis'>
-  <voice name='{voice}'>
-    <prosody rate='0%' pitch='0%'>
-      {text}
-    </prosody>
-  </voice>
-</speak>"""
 
 
 def _valid_daily_or_400(daily_id: str) -> None:
@@ -71,7 +62,7 @@ class AiService:
         if settings.AZURE_SPEECH_TTS_KEY and settings.AZURE_SPEECH_TTS_REGION:
             tts_url = (f"https://{settings.AZURE_SPEECH_TTS_REGION}.tts.speech.microsoft.com"
                        "/cognitiveservices/v1")
-            ssml = _SSML_TEMPLATE.format(voice=req.voice, text=html_mod.escape(req.text[:5000]))
+            ssml = SSML_TEMPLATE.format(voice=req.voice, text=html_mod.escape(req.text[:5000]))
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
                     resp = await client.post(

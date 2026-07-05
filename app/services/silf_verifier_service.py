@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from ..prompts.silf_verifier import JUDGE_SYSTEM
 
 logger = logging.getLogger(__name__)
 
@@ -102,16 +103,6 @@ def _deterministic(story: dict, *, grade: int, catalog_ids: set[str]) -> dict:
     }
 
 
-_JUDGE_SYSTEM = """You are a STRICT CBSE curriculum auditor and child cognitive-load expert reviewing a 5-minute revision story for a school student. You are independent from the writer; your job is to find flaws, not to be kind.
-
-Score each dimension 0-10. Be critical: 5-6 is average, 7-8 is good, reserve 9-10 ONLY for genuinely exceptional work. Most stories have real flaws.
-- cbse_ncert_alignment: factual accuracy + correct NCERT terminology for the topic/grade.
-- cognitive_load_safety: one idea per step, no overload, concept names grounded in action.
-- relatability: is the protagonist a same-age student in the student's OWN everyday world (home/school/play), making the reader feel "this is my life"? Score 4 or LOWER if the setting is a shop/stall/cart/business, serving customers, a family business, or an adult job — a student does not live that world. Also score lower for tired clichés (e.g. a tea/chai scene for a mixtures topic). Reserve 8-10 for a fresh scene the student genuinely lives themselves.
-
-Return ONLY JSON:
-{"cbse_ncert_alignment": int, "cognitive_load_safety": int, "relatability": int, "issues": ["concrete, specific problems"], "verdict": "one short sentence"}"""
-
 
 async def _judge(story: dict, *, topic: str, subject: str, grade: int, ncert_content: str) -> tuple[dict | None, dict]:
     """Returns (verdict_or_None, usage) where usage = {model, in, out}."""
@@ -147,7 +138,7 @@ Judge it now. Return only JSON."""
                 contents=user,
                 config=genai_types.GenerateContentConfig(
                     temperature=0.15, response_mime_type="application/json",
-                    system_instruction=_JUDGE_SYSTEM, max_output_tokens=6000,
+                    system_instruction=JUDGE_SYSTEM, max_output_tokens=6000,
                 ),
             )
             raw = (r.text or "").strip()
@@ -163,7 +154,7 @@ Judge it now. Return only JSON."""
             client = get_client()
             r = client.chat.completions.create(
                 model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
-                messages=[{"role": "system", "content": _JUDGE_SYSTEM}, {"role": "user", "content": user}],
+                messages=[{"role": "system", "content": JUDGE_SYSTEM}, {"role": "user", "content": user}],
                 response_format={"type": "json_object"}, temperature=0.15, max_tokens=6000,
             )
             raw = (r.choices[0].message.content or "").strip()

@@ -1,6 +1,6 @@
 """Simulation prompt templates + pure prompt-builder functions.
 
-Pure data/logic module (no I/O) extracted from routers/ai.py so the
+Pure data/logic module (no I/O) for the simulation service so the
 simulation service can import it (router -> service -> this).
 """
 from __future__ import annotations

@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 def _prompt_and_validator():
-    """Lazy import the approved prompt + validator from the router (avoids a
-    circular import and keeps ONE definition of the approved format)."""
-    from app.routers.classes import SUMMARY_PROMPT, _validate_blocks
-    return SUMMARY_PROMPT, _validate_blocks
+    """The approved summary-blocks prompt + its validator (single source of truth
+    in app/prompts/summary.py — shared with the regenerate-summary path)."""
+    from app.prompts.summary import SUMMARY_PROMPT, validate_blocks
+    return SUMMARY_PROMPT, validate_blocks
 
 
 # Provider preference when the canonical top-level transcript_text is empty.

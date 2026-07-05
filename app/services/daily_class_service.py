@@ -32,6 +32,8 @@ from ..db.repositories import (
 from ..models.schemas import DailyClass, Summary
 from ..services.ai import summarize as ai_summarize, get_client, get_chat_client
 from ..services.auto_quiz_generator import AutoQuizGenerator
+from ..prompts.summary import SUMMARY_PROMPT, validate_blocks
+from ..prompts.widget import WIDGET_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -75,148 +77,11 @@ class CompareRequest(BaseModel):
     force: bool = False
 
 
-SUMMARY_PROMPT = """You are creating a revision summary for a Class {class_no} student who attended this class today.
-You have two sources. Blend them into ONE confident voice per concept.
-Never show them as separate competing paragraphs.
-
-BLENDING RULES:
-- Use teacher analogies and examples — keep their phrasing
-- Use NCERT for precise facts, formulas, definitions
-- Write ONE explanation per concept that honours both sources naturally
-- If teacher simplified something NCERT states precisely: keep teacher framing, add NCERT precision
-- Never write "teacher said X, NCERT says Y" — student reads ONE clear thing
-
-CLASS LEVEL GUIDE:
-- Class 3-5: Simple everyday words. Max 3 key terms. No formulas.
-- Class 6-7: Simple scientific vocabulary. Max 5 key terms. Basic formulas.
-- Class 8-9: Standard terminology. Concise definitions. Include formulas.
-
-REQUIRED BLOCK ORDER:
-1. concept blocks (2-4) — each must have:
-   {{ "type": "concept", "title": "...", "content": "...", "icon": "<1 emoji that represents this concept visually>",
-      "sources": ["teacher", "ncert"] }}
-   sources options: ["teacher","ncert"] if both used | ["ncert"] if teacher didn't cover it | ["teacher"] if not in NCERT
-
-2. analogy block — REQUIRED. Create a vivid real-world comparison that makes the concept memorable.
-   If the teacher used one, keep their exact words. Otherwise invent a strong one.
-   {{ "type": "analogy", "content": "..." }}
-
-3. formula block — ONLY for Math/Science with an equation:
-   {{ "type": "formula", "label": "The equation", "expression": "...", "note": "..." }}
-
-4. terms block — key vocabulary, always visible with definition:
-   {{ "type": "terms", "items": [{{ "term": "...", "meaning": "..." }}] }}
-
-OPTIONAL additional types (use only if they genuinely fit):
-- "fact":     {{"type":"fact","items":["..."]}}
-- "timeline": {{"type":"timeline","items":[{{"date":"1857","event":"..."}}]}}
-- "rule":     {{"type":"rule","title":"...","content":"...","example":"..."}}
-- "steps":    {{"type":"steps","title":"...","steps":["...","..."]}}
-
-Return ONLY valid JSON. 4-7 blocks total. NEVER include a checkpoint block. NEVER show NCERT quotes separately."""
-
-VALID_BLOCK_TYPES = {"concept", "terms", "steps", "analogy", "formula", "fact", "timeline", "rule"}
-
 SUBJECT_FALLBACKS = {
     "biology": ["Science"], "physics": ["Science"], "chemistry": ["Science"],
     "history": ["Social Science"], "geography": ["Social Science"], "civics": ["Social Science"],
     "math": ["Maths"], "mathematics": ["Maths"],
 }
-
-WIDGET_PROMPT = """You generate interactive "Try It Yourself" widgets for students. Return ONLY valid JSON.
-
-Choose the BEST widget type for the subject and topic:
-
-1. "slider_simulation" — for exploring formulas by changing values (Math, Physics)
-   {{
-     "widget_type": "slider_simulation",
-     "title": "Explore Area of Circle",
-     "instruction": "Drag the slider to change radius and watch area update!",
-     "formula": "A = π × r²",
-     "variables": [
-       {{"name": "radius", "label": "Radius (r)", "min": 1, "max": 10, "default": 3, "unit": "cm", "emoji": "📏"}}
-     ],
-     "outputs": [
-       {{"name": "area", "label": "Area", "expression": "Math.PI * radius * radius", "unit": "cm²", "emoji": "⭕", "decimals": 2}}
-     ],
-     "visual_type": "circle"
-   }}
-
-2. "parameter_simulation" — for exploring cause-effect with multiple variables (Physics, Chemistry)
-   {{
-     "widget_type": "parameter_simulation",
-     "title": "Newton's Second Law",
-     "instruction": "Change force and mass to observe acceleration.",
-     "formula": "a = F ÷ m",
-     "variables": [
-       {{"name": "force", "label": "Force (F)", "min": 1, "max": 100, "default": 20, "unit": "N", "emoji": "💪"}},
-       {{"name": "mass", "label": "Mass (m)", "min": 1, "max": 50, "default": 10, "unit": "kg", "emoji": "⚖️"}}
-     ],
-     "outputs": [
-       {{"name": "acceleration", "label": "Acceleration", "expression": "force / mass", "unit": "m/s²", "emoji": "🚀", "decimals": 2}}
-     ],
-     "visual_type": "motion"
-   }}
-
-3. "drag_sequence" — for ordering steps/processes (Science, History, any sequential concept)
-   {{
-     "widget_type": "drag_sequence",
-     "title": "Order the Photosynthesis Steps",
-     "instruction": "Tap a step, then tap its correct position.",
-     "items": [
-       {{"id": "1", "label": "Sunlight hits leaf", "emoji": "☀️", "correct_position": 1}},
-       {{"id": "2", "label": "Chlorophyll absorbs light", "emoji": "🌿", "correct_position": 2}},
-       {{"id": "3", "label": "CO₂ + Water react", "emoji": "💧", "correct_position": 3}},
-       {{"id": "4", "label": "Glucose + Oxygen produced", "emoji": "🍃", "correct_position": 4}}
-     ]
-   }}
-
-4. "step_builder" — for solving problems step by step (Math, Grammar)
-   {{
-     "widget_type": "step_builder",
-     "title": "Solve: 2x + 4 = 10",
-     "instruction": "Choose the correct next step.",
-     "steps": [
-       {{"prompt": "Step 1: Subtract 4 from both sides", "options": ["2x = 6", "2x = 14", "x = 6"], "correct": 0, "explanation": "10 − 4 = 6"}},
-       {{"prompt": "Step 2: Divide by 2", "options": ["x = 3", "x = 12", "x = 2"], "correct": 0, "explanation": "6 ÷ 2 = 3"}}
-     ]
-   }}
-
-RULES:
-- Use ONLY facts from the provided content
-- For expressions: use JavaScript math (Math.PI, *, /, +, -)
-- Variable names in expressions must match the "name" field exactly
-- Keep it simple for Class {{class_no}} students
-- For science processes: prefer drag_sequence
-- For math/physics formulas: prefer slider_simulation or parameter_simulation
-- For problem solving: prefer step_builder
-- Return exactly ONE widget object"""
-
-
-def _validate_blocks(data) -> list[dict]:
-    """Validate/sanitize LLM JSON (list, {"blocks":[...]}, or nested-list dict)."""
-    if isinstance(data, list):
-        blocks = data
-    elif isinstance(data, dict):
-        blocks = data.get("blocks")
-        if not isinstance(blocks, list):
-            blocks = next((v for v in data.values() if isinstance(v, list)), [])
-    else:
-        blocks = []
-    if not isinstance(blocks, list) or len(blocks) == 0:
-        raise ValueError("No blocks in response")
-
-    cleaned = []
-    for b in blocks[:10]:
-        if not isinstance(b, dict) or "type" not in b:
-            continue
-        if b["type"] not in VALID_BLOCK_TYPES:
-            continue
-        cleaned.append(b)
-
-    if "concept" not in {b["type"] for b in cleaned}:
-        raise ValueError("Missing required 'concept' block")
-    return cleaned
 
 
 class DailyClassService:
@@ -338,7 +203,7 @@ class DailyClassService:
                 response_format={"type": "json_object"}, temperature=0.3)
             raw = resp.choices[0].message.content
             try:
-                blocks = _validate_blocks(json_mod.loads(raw))
+                blocks = validate_blocks(json_mod.loads(raw))
             except (json_mod.JSONDecodeError, ValueError) as e:
                 logger.error(f"LLM JSON validation failed: {e}\nRaw: {raw[:500]}")
                 blocks = [{"type": "concept", "title": topic_str, "content": "Summary not available — please try again."}]
@@ -377,7 +242,7 @@ class DailyClassService:
             response_format={"type": "json_object"}, temperature=0.3)
         raw = resp.choices[0].message.content
         try:
-            blocks = _validate_blocks(json_mod.loads(raw))
+            blocks = validate_blocks(json_mod.loads(raw))
         except (json_mod.JSONDecodeError, ValueError) as e:
             logger.error(f"LLM JSON validation failed: {e}\nRaw: {raw[:500]}")
             blocks = [
