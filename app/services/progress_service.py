@@ -104,6 +104,45 @@ class ProgressService:
         )
         return [_to_model(d) for d in docs]
 
+    async def weak_topics(self, *, student_id: str, limit: int,
+                          requester: CurrentUser) -> List[dict]:
+        """Topics the student scored lowest on, weakest first — drives the home
+        'continue' card so a student resumes where they're still building mastery,
+        not just the most recent class. Only quizzes actually attempted count
+        (a genuine 0% IS a weak topic, so we gate on quiz_attempts, not score).
+        Ties break to the most recent daily so stale topics sink."""
+        assert_can_access_student(requester, student_id)
+        limit = max(1, min(limit, 10))
+
+        docs = await self.progress.list_for_student(
+            student_id=student_id, start_date=None, end_date=None
+        )
+        attempted = [d for d in docs if (d.get("quiz_attempts") or 0) > 0]
+        # Stable two-pass sort: most-recent-first, then weakest-first wins.
+        attempted.sort(key=lambda d: (d.get("date") or ""), reverse=True)
+        attempted.sort(key=lambda d: (d.get("quiz_score") or 0.0))
+
+        results: List[dict] = []
+        for d in attempted:
+            if len(results) >= limit:
+                break
+            daily_id = d.get("daily_id")
+            try:
+                daily = await self.daily.get(daily_id)
+            except InvalidObjectId:
+                daily = None
+            if not daily:
+                continue
+            topics = daily.get("topics") or []
+            results.append({
+                "daily_id": str(daily_id),
+                "subject": daily.get("subject"),
+                "topic": topics[0] if topics else "Today's topic",
+                "quiz_score": round(d.get("quiz_score") or 0.0, 1),
+                "date": daily.get("date"),
+            })
+        return results
+
     async def weekly_summary(self, *, student_id: str, start_date: str,
                              requester: CurrentUser) -> List[dict]:
         assert_can_access_student(requester, student_id)

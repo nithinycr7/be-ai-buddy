@@ -37,6 +37,16 @@ async def get_progress(
         student_id=student_id, start_date=start_date, end_date=end_date, requester=user,
     )
 
+@router.get("/weak-topics")
+async def get_weak_topics(
+    student_id: str,
+    limit: int = 3,
+    service: ProgressService = Depends(get_progress_service),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Weakest-first list of attempted topics, for the home 'continue' card."""
+    return await service.weak_topics(student_id=student_id, limit=limit, requester=user)
+
 @router.get("/weekly")
 async def get_weekly_summary(
     student_id: str,
