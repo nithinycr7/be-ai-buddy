@@ -14,6 +14,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from ..core.config import settings
 from ..core.passwords import generate_numeric_code, hash_secret, verify_secret
+from .notifications import get_otp_sender
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ async def request_otp(db: AsyncIOMotorDatabase, *, tenant: str, phone: str) -> d
     await db.otp_codes.delete_many({"tenant": tenant, "phone": phone, "consumed": False})
     await db.otp_codes.insert_one(doc)
 
-    await _send_sms(phone, code)
+    await get_otp_sender().send(phone=phone, code=code)
 
     out = {"sent": True, "phone": phone, "expires_in": settings.OTP_TTL_MIN * 60}
     if settings.OTP_DEV_ECHO and not settings.is_production():
@@ -82,12 +83,3 @@ async def verify_otp(db: AsyncIOMotorDatabase, *, tenant: str, phone: str, code:
 
     await db.otp_codes.update_one({"_id": rec["_id"]}, {"$set": {"consumed": True}})
     return True
-
-
-async def _send_sms(phone: str, code: str) -> None:
-    """Placeholder SMS dispatch. Real provider is a P2 follow-up."""
-    if settings.is_production():
-        # TODO(P2): integrate SMS provider (MSG91/Twilio/Gupshup). Never log the code.
-        log.warning("OTP requested for %s but no SMS provider is configured", phone)
-    else:
-        log.info("[DEV OTP] %s -> %s", phone, code)

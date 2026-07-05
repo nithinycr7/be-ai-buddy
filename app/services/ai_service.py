@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-import anthropic
 from bson import ObjectId
 from fastapi import Depends
 from pydantic import BaseModel
@@ -22,7 +21,7 @@ from ..db.repositories import (
     SimulationRepository, get_simulation_repo,
     StudentRepository, get_student_repo,
 )
-from ..services.ai import get_client, get_gemini_client
+from ..services.llm import AnthropicProvider, AzureProvider, GeminiProvider, generate_text
 from ..prompts.simulation import (
     _SIMULATION_TEMPLATE_V2, _build_simulation_prompt, _extract_summary_text,
 )
@@ -137,51 +136,24 @@ class AiService:
         user_parts.append("\nGenerate the complete interactive simulation HTML now. Output ONLY raw HTML starting with <!DOCTYPE html>. No markdown fences, no commentary.")
         user_message = "\n".join(user_parts)
 
-        html = None
+        # Gemini → Anthropic share the V2 system prompt + the same user message.
+        html = generate_text(
+            [GeminiProvider(settings.GEMINI_SIMULATION_MODEL),
+             AnthropicProvider(settings.ANTHROPIC_SIMULATION_MODEL)],
+            system=_SIMULATION_TEMPLATE_V2, user=user_message,
+            max_tokens=12000, temperature=0.65)
 
-        # Gemini (primary)
-        gemini = get_gemini_client()
-        if gemini is not None:
-            try:
-                from google.genai import types as genai_types
-                g_resp = gemini.models.generate_content(
-                    model=settings.GEMINI_SIMULATION_MODEL, contents=user_message,
-                    config=genai_types.GenerateContentConfig(
-                        temperature=0.65, max_output_tokens=12000,
-                        system_instruction=_SIMULATION_TEMPLATE_V2))
-                html = (g_resp.text or "").strip() or None
-            except Exception as e:
-                logger.warning(f"[SIMULATION] Gemini call failed, falling back to Anthropic/Azure: {e}")
-
-        # Anthropic (fallback)
-        if html is None and settings.ANTHROPIC_API_KEY:
-            try:
-                anth_client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-                anth_resp = anth_client.messages.create(
-                    model=settings.ANTHROPIC_SIMULATION_MODEL, max_tokens=12000, temperature=0.65,
-                    system=_SIMULATION_TEMPLATE_V2, messages=[{"role": "user", "content": user_message}])
-                html = anth_resp.content[0].text.strip()
-            except Exception as e:
-                logger.warning(f"[SIMULATION] Anthropic call failed, falling back to Azure: {e}")
-
-        # Azure OpenAI (fallback)
+        # Azure fallback uses its own prompt shape (build_simulation_prompt as the user
+        # message). If every provider is unavailable, that's a hard failure (502).
         if html is None:
-            prompt = _build_simulation_prompt(topic, subject, class_no, persona, summary_text)
-            client = get_client()
-            try:
-                resp = client.chat.completions.create(
-                    model=settings.AZURE_OPENAI_CHAT_DEPLOYMENT,
-                    messages=[
-                        {"role": "system", "content": (
-                            "You are a specialized Educational Content Pipeline Engine. "
-                            "Return ONLY raw HTML starting with <!DOCTYPE html>. "
-                            "No markdown, no code fences, no commentary.")},
-                        {"role": "user", "content": prompt}],
-                    temperature=0.65, max_tokens=12000)
-            except Exception as e:
-                logger.exception(f"[SIMULATION] LLM call failed: {e}")
-                raise AppError(f"Simulation generation failed: {e}", status_code=502)
-            html = resp.choices[0].message.content.strip()
+            html = AzureProvider(settings.AZURE_OPENAI_CHAT_DEPLOYMENT).generate(
+                system=("You are a specialized Educational Content Pipeline Engine. "
+                        "Return ONLY raw HTML starting with <!DOCTYPE html>. "
+                        "No markdown, no code fences, no commentary."),
+                user=_build_simulation_prompt(topic, subject, class_no, persona, summary_text),
+                max_tokens=12000, temperature=0.65)
+        if html is None:
+            raise AppError("Simulation generation failed: all providers unavailable", status_code=502)
 
         # Strip markdown fences if the LLM wraps despite instructions
         if html.startswith("```"):
